@@ -9,6 +9,10 @@ class DataPack():
     """
     def __init__(self):
         self.raw_data = None
+        self.data = None
+        self.site_info = None
+        self.data_type = None
+        self.sample_unit = None
         self.tag = []
 
 class SubThread(threading.Thread):

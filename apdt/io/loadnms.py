@@ -13,7 +13,7 @@ def load_nms(site, start_date, end_date=None, gas='pm2d5'):
     Parameters
     ----------
         site: string or list
-            The station ID of queried stations like "1001A", or list of such.
+            The station ID of queried stations like "1001A", or list of such. Sepcifically, if given 'ALL', all available sites will be used.
         start_date: string
             The start time (include) like "2017-01-01".
         end_date: string, default: same as start_date
