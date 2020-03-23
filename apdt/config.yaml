@@ -1,0 +1,9 @@
+darksky_secret_key_num: 6
+darksky_secret_key_0: 3636efb586ef9346635b4c2481ada25a
+darksky_secret_key_1: f8ef889a2a0afc7375bfd8300cac9e65
+darksky_secret_key_2: 2f72a1c990c72ec5da35331917588182
+darksky_secret_key_3: e594c6be526dce88753dfda10df2311f
+darksky_secret_key_4: defed924f50985ff55175a7ce19e07e2
+darksky_secret_key_5: 8e44624d195d316309ca1d910e622a70
+nms_data_path: data/
+subthread_max_num: 4
