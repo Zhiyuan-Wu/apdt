@@ -67,6 +67,8 @@ def load_nms(site, start_date, end_date=None, gas='pm2d5'):
                 data = data.rename(columns={'hour': 'datetime'}).set_index('datetime')
                 data = data.stack(dropna=False).reset_index(level = 1, drop = False).rename(columns={'level_1': 'site_id', 0: 'data0'})
                 data_list.append(data)
+                if any(data.pd.isna(columns='site_id')):
+                    d=1
             except:
                 pass
             time_now += 24*3600
@@ -82,10 +84,11 @@ def load_nms(site, start_date, end_date=None, gas='pm2d5'):
         data_list = data_list+workers[i].get_result()
     data_list = pd.concat(data_list)
     data_list = data_list.reset_index().merge(location, on='site_id', how='left').set_index('datetime')
+    data_list = data_list.dropna(subset=['lat', 'lon'])
 
     artifact = DataPack()
     artifact.raw_data = data_list
-    artifact.data = data_list
+    artifact.data = data_list.copy()
     artifact.site_info = location
     artifact.data_type = gas
     artifact.sample_unit = 'H'

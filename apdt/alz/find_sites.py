@@ -24,6 +24,7 @@ def find_sites_range(datapack, clat, clon, radius):
     loc1 = np.array([[clon, clat]])
     loc2 = datapack.site_info[['lon', 'lat']].values
     h_distance = haversine(loc1, loc2)
-    result = list(datapack.site_info['site_id'][np.squeeze(h_distance<100)])
+    h_distance[np.isnan(h_distance)] = radius + 1
+    result = list(datapack.site_info['site_id'][np.squeeze(h_distance<radius)])
     return result
 
