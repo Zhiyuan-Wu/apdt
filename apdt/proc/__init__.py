@@ -1,1 +1,1 @@
-from apdt.proc.interplot import spatial_interplot
+from apdt.proc.interpolate import spatial_interplot, temporal_interpolate
