@@ -1,11 +1,36 @@
 import apdt
-import numpy as np
+import tensorflow as tf
 
 # This script is a demo of apdt
 # We will predict air pollution in Beijing NMS by WaveNet.
 
-t = apdt.io.load_nms('ALL','2017-01-01','2017-01-02')
-r = apdt.alz.find_sites_range(t, 39.8673, 116.3660, 100)
-t = apdt.proc.spatial_interplot(t, 'IDW')
-t = apdt.proc.temporal_interpolate(t, 'ALL', 'linear')
-_debug = 233
+# Load all sites in china
+data = apdt.io.load_nms('ALL','2017-01-01')
+
+# Find sites in Beijing
+site_list = apdt.alz.find_sites_range(data, 39.8673, 116.3660, 100)
+
+# Load long term data in these sites
+data = apdt.io.load_nms(site_list, '2017-01-01', '2017-01-31')
+
+# Spatial interpolate by IDW first then temporal interpolate
+data = apdt.proc.spatial_interplot(data, 'IDW')
+
+# Temporal interpolate by Linear
+data = apdt.proc.temporal_interpolate(data, 'ALL', 'linear')
+
+# Construct dataset
+dataset = apdt.ml.DataSet(data, method='window')
+
+# Define the model structure
+class WaveNetModel(apdt.ml.TFModel):
+    def def_model(self, **kwarg):
+        self.input = tf.placeholder(tf.float32, shape=(len(site_list), 128, 1))
+        self.learning_rate = tf.placeholder(tf.float32, name='learning_rate')
+        self.pred, self.loss = apdt.ml.WaveNet(self.input, apdt.ml.wavenet_weight(), 'wavenet')
+
+# Set up the model
+model = WaveNetModel()
+
+# Start Training
+model.fit(dataset)
