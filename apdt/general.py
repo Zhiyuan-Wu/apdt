@@ -15,6 +15,11 @@ class DataPack():
         self.sample_unit = None
         self.tag = []
 
+    def reset(self):
+        '''Reset data into just-loaded status.
+        '''
+        self.data = self.raw_data.copy()
+
 class SubThread(threading.Thread):
     """SubThread is an interface of python threading.
     """
