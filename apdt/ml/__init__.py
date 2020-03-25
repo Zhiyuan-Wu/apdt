@@ -1,1 +1,1 @@
-from apdt.ml.dataset import DataSet, TFModel
+from apdt.ml.general import DataSet, TFModel

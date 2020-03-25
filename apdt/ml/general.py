@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import os
+import time
 
 class DataSet():
     '''DataSet can make DataPack object being Machine Learning ready.
@@ -76,26 +78,90 @@ class DataSet():
 
 class TFModel():
     def __init__(self, **kwarg):
+        np.random.seed(0)
+        tf.set_random_seed(0)
         self.def_model(**kwarg)
-        self._setup_train_op()
+        self.setup_train_op(**kwarg)
+        self.saver = tf.train.Saver()
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
 
     def def_model(self, **kwarg):
         self.input = None
         self.learning_rate = 0
         self.loss = 0
 
-    def _setup_train_op(self):
+    def setup_train_op(self, **kwarg):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         gvs = optimizer.compute_gradients(self.loss)
         clipped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
         gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
         self.train_op = optimizer.apply_gradients(gvs)
 
-    def update(self, dataset):
+    def update(self, data):
         pass
 
     def eval(self, data):
         pass
 
     def fit(self, dataset, **kwarg):
+        # parameter checking
+        if 'model_name' not in kwarg.keys():
+            kwarg['model_name'] = 'NewModel'
+        if 'learning_rate' not in kwarg.keys():
+            kwarg['learning_rate'] = 1e-3
+        if 'baseline' not in kwarg.keys():
+            kwarg['baseline'] = 0
+        if 'epoch' not in kwarg.keys():
+            kwarg['epoch'] = 100
+        if 'print_every_n_epochs' not in kwarg.keys():
+            kwarg['print_every_n_epochs'] = 1
+        if 'learning_rate_decay_every_n_epochs' not in kwarg.keys():
+            kwarg['learning_rate_decay_every_n_epochs'] = kwarg['epoch'] + 1
+        if 'learning_rate_decay' not in kwarg.keys():
+            kwarg['learning_rate_decay'] = 2.0
+        if 'epoch' not in kwarg.keys():
+            kwarg['epoch'] = 100
+
+        version = time.strftime('%Y%m%d_%H%M%S')
+        if not os.path.exists('model/'):
+            os.mkdir('model/')
+        os.mkdir('model/' + kwarg['model_name'] + version)
+        lr = float(kwarg['learning_rate'])
+        performance_recorder = kwarg['baseline']
+        for epoch in range(kwarg['epoch']):
+            # update an epoch
+            train_ls = []
+            for _ in range(dataset.tr_batch_num):
+                batch = dataset.tr_get_batch()
+                feed_dict = {self.learning_rate: lr, self.input: batch}
+                _, ls = self.sess.run([self.train_op, self.loss], feed_dict)
+                train_ls.append(ls)
+            
+            # print log
+            if (epoch+1)%kwarg['print_every_n_epochs'] == 0:
+                train_ls = np.mean(train_ls)
+                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+            
+            # learning_rate_decay
+            if (epoch+1)%kwarg['learning_rate_decay_every_n_epochs'] == 0:
+                    lr = lr/kwarg['learning_rate_decay']
+                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
+
+            # test
+            if (epoch+1)%kwarg['test_every_n_epochs'] == 0:
+                test_ls = []
+                for _ in range(dataset.te_batch_num):
+                    batch = dataset.te_get_batch()
+                    feed_dict = {self.learning_rate: lr, self.input: batch}
+                    ls = self.sess.run(self.loss, feed_dict)
+                    test_ls.append(ls)
+                test_ls = np.mean(test_ls)
+
+                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Test loss ',round(test_ls,4))
+                target = test_ls
+                if target < performance_recorder:
+                    self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
+                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
+                    performance_recorder = target
         pass
