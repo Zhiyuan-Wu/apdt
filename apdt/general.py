@@ -48,57 +48,58 @@ class DataSet():
             raise Exception("method should be predefined or a callable.")
 
     def _construct_window(self, datapack, **kwarg):
+        self.method = 'window'
+        
+        if 'split_ratio' not in kwarg.keys():
+            kwarg['split_ratio'] = 0.7
+        if 'shuffle' not in kwarg.keys():
+            kwarg['shuffle'] = True
+        if 'seq_len' not in kwarg.keys():
+            kwarg['seq_len'] = 100
+
         T = datapack.time_length
         N = datapack.site_num
-        self.data = datapack.data.reset_index().sort_values(['datetime','site_id'])['data0'].values.reshape((T,N,1))
+        self.data = datapack.data.reset_index().sort_values(['datetime', 'site_id'])['data0'].values.reshape((T, N, 1))
 
-        batch_perm = np.linspace(0, N-1, N)
-        np.random.shuffle(batch_perm)
-        self.data = self.data[:,batch_perm.astype(int),:]
+        if kwarg['shuffle'] is True:
+            batch_perm = np.linspace(0, N-1, N)
+            np.random.shuffle(batch_perm)
+            self.data = self.data[:, batch_perm.astype(int), :]
 
-        self.tr = self.data[:81*108+1]
-        self.te = self.data[81*108+1:81*216+2]
-        self.tr = np.transpose(self.tr,(1,0,2))
-        self.te = np.transpose(self.te,(1,0,2))
-        self.tr = np.concatenate((self.tr,np.concatenate((self.tr,self.tr[:,-1:]),1)[:,1:,1:]),-1)
-        self.te = np.concatenate((self.te,np.concatenate((self.te,self.te[:,-1:]),1)[:,1:,1:]),-1)
+        split_point = int(T * kwarg['split_ratio'])
+        self.tr = self.data[:split_point]
+        self.te = self.data[split_point:]
+        self.tr = np.transpose(self.tr, (1,0,2))
+        self.te = np.transpose(self.te, (1,0,2))
 
-        self.batch_size = args['seq_len']-1
+        self.seq_len = kwarg['seq_len']
         self.tr_batch_counter = 0
-        self.tr_batch_num = (self.tr.shape[1]-1)//(args['seq_len']-1)
+        self.tr_batch_num = self.tr.shape[1]//kwarg['seq_len']
         self.tr_batch_perm = np.linspace(0,self.tr_batch_num-1,self.tr_batch_num)
         np.random.shuffle(self.tr_batch_perm)
         self.te_batch_counter = 0
-        self.te_batch_num = (self.te.shape[1]-1)//(args['seq_len']-1)
+        self.te_batch_num = self.te.shape[1]//kwarg['seq_len']
         self.te_batch_perm = np.linspace(0,self.te_batch_num-1,self.te_batch_num)
         np.random.shuffle(self.te_batch_perm)
 
-    def tr_get_batch(self,id=None):
-        if id:
-            idx_start = self.batch_size*id
-            idx_end = self.batch_size*(id+1)
-        else:
+    def tr_get_batch(self):
+        if self.method=='window':
             id = int(self.tr_batch_perm[self.tr_batch_counter])
-            idx_start = self.batch_size*id
-            idx_end = self.batch_size*(id+1)
-            self.tr_batch_counter = (self.tr_batch_counter+1)%self.tr_batch_num
+            idx_start = self.seq_len * id
+            idx_end = self.seq_len * (id + 1)
+            self.tr_batch_counter = (self.tr_batch_counter + 1) % self.tr_batch_num
             if self.tr_batch_counter==0:
                 np.random.shuffle(self.tr_batch_perm)
-        
-        batch = self.tr[:,idx_start:idx_end+1]
-        return batch
+            batch = self.tr[:, idx_start:idx_end]
+            return batch
 
     def te_get_batch(self,id=None):
-        if id:
-            idx_start = self.batch_size*id
-            idx_end = self.batch_size*(id+1)
-        else:
+        if self.method=='window':
             id = int(self.te_batch_perm[self.te_batch_counter])
-            idx_start = self.batch_size*id
-            idx_end = self.batch_size*(id+1)
-            self.te_batch_counter = (self.te_batch_counter+1)%self.te_batch_num
+            idx_start = self.seq_len * id
+            idx_end = self.seq_len * (id + 1)
+            self.te_batch_counter = (self.te_batch_counter + 1) % self.te_batch_num
             if self.te_batch_counter==0:
                 np.random.shuffle(self.te_batch_perm)
-        
-        batch = self.te[:,idx_start:idx_end+1]
-        return batch
+            batch = self.te[:,idx_start:idx_end]
+            return batch
