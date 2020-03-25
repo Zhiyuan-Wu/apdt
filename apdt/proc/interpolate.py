@@ -92,8 +92,8 @@ def temporal_interpolate(datapack, site='ALL', method='linear'):
         mask = mask | _mask
         result.append(series)
     datapack.data = pd.concat([datapack.data[~mask]]+result).sort_index()
-    if site=='ALL':
+    if all(mask):
         datapack.tag.append('time-aligned')
         datapack.time_length = len(datapack.data.index.drop_duplicates())
-        datapack.site_num = len(datapack.site_info.shape[0])
+        datapack.site_num = datapack.site_info.shape[0]
     return datapack

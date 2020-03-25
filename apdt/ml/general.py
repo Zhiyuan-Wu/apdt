@@ -3,6 +3,7 @@ import pandas as pd
 import tensorflow as tf
 import os
 import time
+import apdt
 
 class DataSet():
     '''DataSet can make DataPack object being Machine Learning ready.
@@ -28,9 +29,13 @@ class DataSet():
             kwarg['shuffle'] = True
         if 'seq_len' not in kwarg.keys():
             kwarg['seq_len'] = 100
+        if 'normalize' not in kwarg.keys():
+            kwarg['normalize'] = True
 
         T = datapack.time_length
         N = datapack.site_num
+        if kwarg['normalize']:
+            datapack = apdt.proc.linear_normalize(datapack, 'data0', '99pt')
         self.data = datapack.data.reset_index().sort_values(['datetime', 'site_id'])['data0'].values.reshape((T, N, 1))
 
         if kwarg['shuffle'] is True:
@@ -116,6 +121,8 @@ class TFModel():
             kwarg['epoch'] = 100
         if 'print_every_n_epochs' not in kwarg.keys():
             kwarg['print_every_n_epochs'] = 1
+        if 'test_every_n_epochs' not in kwarg.keys():
+            kwarg['test_every_n_epochs'] = 1
         if 'learning_rate_decay_every_n_epochs' not in kwarg.keys():
             kwarg['learning_rate_decay_every_n_epochs'] = kwarg['epoch'] + 1
         if 'learning_rate_decay' not in kwarg.keys():
