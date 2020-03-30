@@ -3,7 +3,10 @@ import pandas as pd
 import apdt
 import yaml
 
-with open('apdt/config.yaml') as f:
+import os
+current_path = os.path.dirname(__file__)
+config_path = os.path.abspath(current_path + '/../config.yaml')
+with open(config_path) as f:
     _config = yaml.load(f, Loader=yaml.FullLoader)
 
 def spatial_interplot(datapack, method='NN', **kwarg):
