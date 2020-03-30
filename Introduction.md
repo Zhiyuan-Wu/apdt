@@ -1,5 +1,10 @@
 # APDT 代码文档
 
+这篇文档已被废弃。
+This doc has been deprecated.
+我们正在将文档迁移到readthedocs。
+We are developing a new version powered by readthedocs.
+
 ## 1 apdt.general
 apdt.general存储一些广泛使用的类型定义。
 
