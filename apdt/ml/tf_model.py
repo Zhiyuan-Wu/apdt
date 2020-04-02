@@ -61,18 +61,20 @@ def WaveNet(input, weights, name, **kwarg):
         tensor
             The loss function.
     '''
-    if 'res_channel' not in kwarg:
+    if 'res_channel' not in kwarg.keys():
         kwarg['res_channel'] = 32
-    if 'skip_channel' not in kwarg:
+    if 'skip_channel' not in kwarg.keys():
         kwarg['skip_channel'] = 16
-    if 'input_dim' not in kwarg:
+    if 'input_dim' not in kwarg.keys():
         kwarg['input_dim'] = 1
-    if 'DilatedConvLayers' not in kwarg:
+    if 'DilatedConvLayers' not in kwarg.keys():
         kwarg['DilatedConvLayers'] = 4
-    if 'n_hidden' not in kwarg:
+    if 'n_hidden' not in kwarg.keys():
         kwarg['n_hidden'] = 128
-    if 'dilated' not in kwarg:
+    if 'dilated' not in kwarg.keys():
         kwarg['dilated'] = 3
+    if 'loss' not in kwarg.keys():
+        kwarg['loss'] = 'MAE'
 
     def CasualResUnit(x,res_channel=kwarg['res_channel'],skip_channel=kwarg['skip_channel'],name='CasualResUnit'):
         # n = x.shape[-1].value
@@ -148,7 +150,10 @@ def WaveNet(input, weights, name, **kwarg):
             pred = tf.nn.conv1d(skip, w, 1, 'SAME')
             pred_prob = tf.nn.softmax(pred)
             pred = tf.nn.conv1d(pred_prob, decoder(tf.constant(np.arange(2**bits).reshape(1,2**bits))), 1, 'SAME')
-            loss = tf.reduce_mean(tf.abs(pred-y))
+            if kwarg['loss']=='MAE':
+                loss = tf.reduce_mean(tf.abs(pred-y))
+            elif kwarg['loss']=='RMSE':
+                loss = tf.sqrt(tf.reduce_mean(tf.square(pred-y)))
             return pred,loss
     
     pred,loss = SingleChannelNetwork(input,0,5,u_law_encoder,u_law_decoder,name=name)
