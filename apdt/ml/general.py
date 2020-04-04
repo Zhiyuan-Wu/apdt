@@ -48,13 +48,16 @@ class DataSet():
                 kwarg['seq_len'] = 100
             if 'normalize' not in kwarg.keys():
                 kwarg['normalize'] = True
+            if 'feature' not in kwarg.keys():
+                kwarg['feature'] = [x for x in datapack.data_type if x.startswith('data')]
 
             self.method = 'window'
             T = datapack.time_length
             N = datapack.site_num
+            D = len(kwarg['feature'])
             if kwarg['normalize']:
-                datapack = apdt.proc.linear_normalize(datapack, 'data0', '99pt')
-            self.data = datapack.data.reset_index().sort_values(['datetime', 'site_id'])['data0'].values.reshape((T, N, 1))
+                datapack = apdt.proc.linear_normalize(datapack, kwarg['feature'], '99pt')
+            self.data = datapack.data.reset_index().sort_values(['datetime', 'site_id'])[kwarg['feature']].values.reshape((T, N, D))
 
             split_point = int(T * kwarg['split_ratio'])
             self.tr = self.data[:split_point]
@@ -67,8 +70,8 @@ class DataSet():
             
             self.tr = self.tr[:self.tr_batch_num * self.seq_len]
             self.te = self.te[:self.te_batch_num * self.seq_len]
-            self.tr = self.tr.reshape((-1, self.seq_len, N, 1))
-            self.te = self.te.reshape((-1, self.seq_len, N, 1))
+            self.tr = self.tr.reshape((-1, self.seq_len, N, D))
+            self.te = self.te.reshape((-1, self.seq_len, N, D))
             self.tr = np.transpose(self.tr, (0,2,1,3))
             self.te = np.transpose(self.te, (0,2,1,3))
 
@@ -77,9 +80,9 @@ class DataSet():
             np.random.seed(kwarg['seed'])
         self.tr_batch_counter = 0
         self.te_batch_counter = 0
-        self.tr_batch_perm = np.linspace(0,self.tr_batch_num-1,self.tr_batch_num)
+        self.tr_batch_perm = np.linspace(0, self.tr_batch_num-1, self.tr_batch_num, dtype=np.int32)
         np.random.shuffle(self.tr_batch_perm)
-        self.te_batch_perm = np.linspace(0,self.te_batch_num-1,self.te_batch_num)
+        self.te_batch_perm = np.linspace(0, self.te_batch_num-1, self.te_batch_num, dtype=np.int32)
         np.random.shuffle(self.te_batch_perm)
 
     def tr_get_batch(self, batch_size=1):
