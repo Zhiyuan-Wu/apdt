@@ -24,6 +24,11 @@ class DataSet():
             If this argument is defined, we will use sepecific pre-defined pre_process fuction.
             Avaliable:
             - 'window': use a non-overlapping window across time-axis to generate samples. locations in a time slice are supposed to be same (i.e. fixed-station). a samlple will be a N*T*D array. where N is the number of locations, T is window length and D is feature dimensions.
+                argument for 'window':
+                - split_ratio=0.7: the ratio of training set;
+                - seq_len=100: the window length;
+                - normalize=True: if we do 0-1 normalize, Warning: dataset should always be properly normalized, and this operation is a in-place operation.
+                - feature=['data0', 'data1', ...]: the feature list to be used. default to all features avaliable.
 
     '''
     def __init__(self, datapack, **kwarg):
@@ -49,7 +54,7 @@ class DataSet():
             if 'normalize' not in kwarg.keys():
                 kwarg['normalize'] = True
             if 'feature' not in kwarg.keys():
-                kwarg['feature'] = [x for x in datapack.data_type if x.startswith('data')]
+                kwarg['feature'] = [x for x in datapack.data.columns if x.startswith('data')]
 
             self.method = 'window'
             T = datapack.time_length
