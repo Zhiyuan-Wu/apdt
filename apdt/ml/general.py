@@ -63,7 +63,7 @@ class DataSet():
             N = datapack.site_num
             D = len(kwarg['feature'])
             if kwarg['normalize']:
-                datapack = apdt.proc.linear_normalize(datapack, kwarg['feature'], '99pt')
+                datapack = apdt.proc.linear_normalize(datapack, kwarg['feature'], kwarg['normalize_method'])
             self.data = datapack.data.reset_index().sort_values(['datetime', 'site_id'])[kwarg['feature']].values.reshape((T, N, D))
 
             split_point = int(T * kwarg['split_ratio'])

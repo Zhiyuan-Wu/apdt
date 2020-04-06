@@ -17,7 +17,6 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, seed=None):
         DataPack
     Issue
     -----
-        The generated data's statistics dont agree with therotical value???
     '''
     if seed is not None:
         np.random.seed(seed)
@@ -25,7 +24,7 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, seed=None):
         kernel_weight = [1.0, 1.0, 1.0]
     
     # Decrease this number if this program stuck.
-    generation_step = 2000
+    generation_step = 1000
 
     xs = np.arange(generation_step*2).reshape((generation_step*2,1))
     k1 = gp.kernels.RBF(length_scale=100.0)
@@ -36,13 +35,14 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, seed=None):
     C_11 = C[:generation_step,:generation_step]
     C_11_inv = np.linalg.inv(C_11)
     C_21 = C[generation_step:,:generation_step]
-    sample = np.zeros((generation_step,site_num*dimension))
-    mu_cond = 0 + np.matmul(np.matmul(C_21, C_11_inv), sample)
+    u, s, _ = np.linalg.svd(C_11)
+    us = np.matmul(u, np.diag(np.sqrt(s)))
+    sample = np.matmul(us, np.random.randn(generation_step,site_num*dimension))
     C_cond = C_11 - np.matmul(np.matmul(C_21.T, C_11_inv), C_21)
     u, s, _ = np.linalg.svd(C_cond)
     us = np.matmul(u, np.diag(np.sqrt(s)))
-    time_now = 0
-    sample_list = []
+    time_now = generation_step
+    sample_list = [sample]
     while time_now < time_length:
         mu_cond = 0 + np.matmul(np.matmul(C_21, C_11_inv), sample)
         sample = np.matmul(us, np.random.randn(generation_step,site_num*dimension))

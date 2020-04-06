@@ -4,10 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 data = apdt.io.gp_data(100000,30)
-d2 = apdt.io.gp_data(1000000,30)
-d2v=d2.data['data0'].values
-print(np.std(d2v)**2)
-
 
 # Construct dataset
 dataset = apdt.ml.DataSet(data, method='window', seq_len=730, normalize_method='max-min')
