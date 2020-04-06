@@ -92,7 +92,7 @@ def load_nms(site, start_date, end_date=None, gas='pm2d5'):
     artifact.raw_data = data_list
     artifact.data = data_list.copy()
     artifact.site_info = location
-    artifact.data_type = gas
+    artifact.data_type = [gas]
     artifact.sample_unit = 'H'
     artifact.tag.append('fixed-location')
 
