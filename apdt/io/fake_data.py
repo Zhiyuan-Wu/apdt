@@ -12,6 +12,12 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, seed=None):
         dimension: int, default 1, How many independent sample each ST-point have.
         kernel_weight: list of three float numbers, default [1.0, 1.0, 1.0], the relevant variance of three components: long-term trend, short-term fluction and period wave.
         seed: int. The random seed. 
+    Return
+    ------
+        DataPack
+    Issue
+    -----
+        The generated data's statistics dont agree with therotical value???
     '''
     if seed is not None:
         np.random.seed(seed)
@@ -19,7 +25,7 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, seed=None):
         kernel_weight = [1.0, 1.0, 1.0]
     
     # Decrease this number if this program stuck.
-    generation_step = 500
+    generation_step = 2000
 
     xs = np.arange(generation_step*2).reshape((generation_step*2,1))
     k1 = gp.kernels.RBF(length_scale=100.0)
@@ -65,6 +71,8 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, seed=None):
     datapack.sample_unit = 'H'
     datapack.tag.append('fixed-location')
     datapack.tag.append('time-aligned')
+    datapack.time_length = time_length
+    datapack.site_num = site_num
 
     return datapack
 

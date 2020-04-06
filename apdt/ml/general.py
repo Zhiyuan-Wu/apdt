@@ -53,6 +53,8 @@ class DataSet():
                 kwarg['seq_len'] = 100
             if 'normalize' not in kwarg.keys():
                 kwarg['normalize'] = True
+            if 'normalize_method' not in kwarg.keys():
+                kwarg['normalize_method'] = '99pt'
             if 'feature' not in kwarg.keys():
                 kwarg['feature'] = [x for x in datapack.data.columns if x.startswith('data')]
 
