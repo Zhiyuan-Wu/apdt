@@ -9,7 +9,7 @@ config_path = os.path.abspath(current_path + '/../config.yaml')
 with open(config_path) as f:
     _config = yaml.load(f, Loader=yaml.FullLoader)
 
-def spatial_interplot(datapack, method='NN', **kwarg):
+def spatial_interplot(datapack, method='NN', columns='ALL', **kwarg):
     '''Using spatial interplotion to complete the missing value.
     Parameters
     ----------
@@ -17,6 +17,8 @@ def spatial_interplot(datapack, method='NN', **kwarg):
         method: str
             The interplotation method to be used. 
             Supported: 'NN'(Nearest Neighboor), 'IDW'(Inverse Distance Weighted)
+        columns: str or list
+            which data columns should we processed on. if 'ALL' is given, all data columns will be considered.
             
     Return
     ------
@@ -39,20 +41,25 @@ def spatial_interplot(datapack, method='NN', **kwarg):
             IDW_scale = 0.05
     else:
         raise Exception("Unknown interpolation method: " + method)
+    if columns=='ALL':
+        columns = [x for x in datapack.data.columns if x.startswith('data')]
+    elif type(columns) is str:
+        columns = [columns]
     
     def worker(k):
         for i, timestamp in enumerate(datapack.data.index.drop_duplicates()):
             if i%worker_num != k:
                 continue
             slice_data = datapack.data.loc[timestamp].copy()
-            nan_index = slice_data['data0'].isna()
-            if not any(nan_index) or all(nan_index):
-                continue
-            sloc = slice_data[~nan_index][['lon', 'lat']].values.reshape((-1,2))
-            svalue = slice_data[~nan_index]['data0'].values.reshape((-1,1))
-            tloc = slice_data[nan_index][['lon', 'lat']].values.reshape((-1,2))
-            tvalue = apdt.alz.IDW(sloc, svalue, tloc, IDW_scale)
-            slice_data.loc[nan_index,'data0'] = tvalue
+            for data_type in columns:
+                nan_index = slice_data[data_type].isna()
+                if not any(nan_index) or all(nan_index):
+                    continue
+                sloc = slice_data[~nan_index][['lon', 'lat']].values.reshape((-1,2))
+                svalue = slice_data[~nan_index][data_type].values.reshape((-1,1))
+                tloc = slice_data[nan_index][['lon', 'lat']].values.reshape((-1,2))
+                tvalue = apdt.alz.IDW(sloc, svalue, tloc, IDW_scale)
+                slice_data.loc[nan_index,data_type] = tvalue
             datapack.data.loc[timestamp] = slice_data
     
     workers = []

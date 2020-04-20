@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 a = apdt.io.load_weather('1151A','2017-01-01')
+b = apdt.io.load_nms(['1151A','1152A'],'2017-01-01')
+c = b.merge(a)
+c = apdt.proc.spatial_interplot(c,'NN','ALL')
 
 data = apdt.io.gp_data(100000,30)
 

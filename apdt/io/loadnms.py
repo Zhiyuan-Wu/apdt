@@ -143,14 +143,14 @@ def load_weather(site, start_date, end_date=None, feature='temperature', **kwarg
     if type(feature) is str:
         feature = [feature]
     
-    alia_dict = {}.update(
-        {x: 'temperature' for x in ['temperature','temp','tmp','wendu']}).update(
-        {x: 'humidity' for x in ['humidity','hmd','hum','shidu']}).update(
-        {x: 'windSpeed' for x in ['windSpeed','speed','spd','fengsu']}).update(
-        {x: 'windBearing' for x in ['windBearing','direction','angel','fengxiang']}).update(
-        {x: 'visibility' for x in ['visibility','kejiandu','keshidu']}).update(
-        {x: 'pressure' for x in ['pressure','press','yali','qiya']}) 
-    for i,x in feature:
+    alia_dict = {}
+    alia_dict.update({x: 'temperature' for x in ['temperature','temp','tmp','wendu']})
+    alia_dict.update({x: 'humidity' for x in ['humidity','hmd','hum','shidu']})
+    alia_dict.update({x: 'windSpeed' for x in ['windSpeed','speed','spd','fengsu']})
+    alia_dict.update({x: 'windBearing' for x in ['windBearing','direction','angel','fengxiang']})
+    alia_dict.update({x: 'visibility' for x in ['visibility','kejiandu','keshidu']})
+    alia_dict.update({x: 'pressure' for x in ['pressure','press','yali','qiya']}) 
+    for i,x in enumerate(feature):
         if x not in alia_dict.keys():
             raise Exception(x+' is not supported.')
         feature[i] = alia_dict[x]
@@ -212,7 +212,7 @@ def load_weather(site, start_date, end_date=None, feature='temperature', **kwarg
     artifact.raw_data = data_bag
     artifact.data = data_bag.copy()
     artifact.site_info = location
-    artifact.data_type = [feature]
+    artifact.data_type = feature
     artifact.sample_unit = 'H'
     artifact.tag.append('fixed-location')
     artifact.tag.append('time-aligned')

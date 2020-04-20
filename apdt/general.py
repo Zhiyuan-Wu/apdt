@@ -47,6 +47,26 @@ class DataPack():
                 sample_unit_list.index(other.sample_unit))]
         return self
     
+    def merge(self, other, on=['datetime','lat','lon']):
+        '''Merge two datapack into one, or concat two along dimension 1.
+        '''
+        for x in self.data_type:
+            if x in other.data_type:
+                raise Exception('Merge error: two datapack have same data type ' + x)
+        self.data.rename(columns={'data' + str(i): j for i,j in enumerate(self.data_type)}, inplace=True)
+        target_data = other.data.rename(columns={'data' + str(i): j for i,j in enumerate(other.data_type)}, inplace=False)
+        self.data = self.data.reset_index()
+        target_data = target_data.reset_index()
+        target_data = target_data[on+other.data_type]
+        self.data = pd.merge(self.data, target_data, how='left',on=['datetime','lat','lon'])
+        self.data_type = list({}.fromkeys(self.data_type + other.data_type).keys())
+        self.data.rename(columns={j: 'data' + str(i) for i,j in enumerate(self.data_type)}, inplace=True)
+        self.data = self.data.set_index('datetime')
+        return self
+
+
+
+
     def add_row(self, datetime, lat=None, lon=None, value=None):
         '''Append rows into datapack. This fuction is usually used as virtual-sampling.
         '''

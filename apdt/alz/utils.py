@@ -46,6 +46,10 @@ def IDW(sloc, svalue, tloc, scale=0.05, kernel='exp'):
     
     distance = haversine(sloc, tloc)
     distance_std = np.std(distance)
+    if distance_std==0:
+        # This happens when there are only one scource, we return a constant result in this case
+        result = np.ones((tloc.shape[0],svalue.shape[1]))*svalue[0]
+        return result
     weight = []
     for i in range(sloc.shape[0]):
         _w = kernel(-distance[i,:]/(distance_std*scale))
