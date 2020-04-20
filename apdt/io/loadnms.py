@@ -123,23 +123,38 @@ def load_weather(site, start_date, end_date=None, feature='temperature', **kwarg
         Deal with data download.
         Deal with coordinates input.
         Deal with multi-thread
+        Deal with site='ALL'
     '''
 
     if 'enable_warning' not in kwarg.keys():
         kwarg['enable_warning'] = True
 
-    worker_num = _config['subthread_max_num']
     data_path = _config['nms_data_path']
     location = pd.read_csv(data_path+'site_location.csv')
-    # feature = ['temperature','humidity','windSpeed','windBearing',\
-    #            'cloudCover','visibility']
 
     if site=='ALL':
         # site = list(location['监测点编码'])
+        print('all site not supported yet')
+        return None
     elif type(site) is str:
         site = [site]
     if end_date is None:
         end_date = start_date
+    if type(feature) is str:
+        feature = [feature]
+    
+    alia_dict = {}.update(
+        {x: 'temperature' for x in ['temperature','temp','tmp','wendu']}).update(
+        {x: 'humidity' for x in ['humidity','hmd','hum','shidu']}).update(
+        {x: 'windSpeed' for x in ['windSpeed','speed','spd','fengsu']}).update(
+        {x: 'windBearing' for x in ['windBearing','direction','angel','fengxiang']}).update(
+        {x: 'visibility' for x in ['visibility','kejiandu','keshidu']}).update(
+        {x: 'pressure' for x in ['pressure','press','yali','qiya']}) 
+    for i,x in feature:
+        if x not in alia_dict.keys():
+            raise Exception(x+' is not supported.')
+        feature[i] = alia_dict[x]
+        
 
     
     location = location[[location.iloc[i,0] in site for i in range(location.shape[0])]]
