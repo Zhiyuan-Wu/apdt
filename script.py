@@ -3,6 +3,8 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 
+a = apdt.io.load_weather('1151A','2017-01-01')
+
 data = apdt.io.gp_data(100000,30)
 
 # Construct dataset
