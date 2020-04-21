@@ -4,6 +4,7 @@ import tensorflow as tf
 import os
 import time
 import apdt
+import pickle
 
 class DataSet():
     '''DataSet can make DataPack object being Machine Learning ready.
@@ -19,7 +20,8 @@ class DataSet():
 
     Parameters
     ----------
-        datapack: DataPack object
+        datapack: DataPack object or str
+            The datapack to be processed into a dataset. If a str is given, it will be considered as a pikle file path, and will construct dataset directly from that file.
         method: str
             If this argument is defined, we will use sepecific pre-defined pre_process fuction.
             Avaliable:
@@ -32,8 +34,26 @@ class DataSet():
 
     '''
     def __init__(self, datapack, **kwarg):
-        self.pre_process(datapack, **kwarg)
+        if type(datapack) is apdt.DataPack:
+            self.pre_process(datapack, **kwarg)
+        elif type(datapack) is str:
+            self.load(datapack, **kwarg)
+
         self._init_counter(**kwarg)
+
+    def dump(self, path):
+        dumped_data = {'data': self.data, 'tr': self.tr, 'te': self.te}
+        with open(path, 'wb') as f:
+            pickle.dump(dumped_data, f, 1)
+
+    def load(self, path, **kwarg):
+        with open(path, 'rb') as f:
+            dumped_data = pickle.load(f)
+        self.data = dumped_data['data']
+        self.tr = dumped_data['tr']
+        self.te = dumped_data['te']
+        self.tr_batch_num = self.tr.shape[0]
+        self.te_batch_num = self.te.shape[0]
 
     def pre_process(self, datapack, **kwarg):
         if 'method' not in kwarg.keys():

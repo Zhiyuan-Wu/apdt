@@ -13,11 +13,13 @@ c = apdt.proc.temporal_interpolate(c)
 
 # Construct dataset
 dataset = apdt.ml.DataSet(c, method='window', seq_len=730, normalize_method='999pt')
+print(c.normalize_factor)
+dataset.dump('data/nanjingPM2.5.pkl')
 
 # Define the model structure
 class MyModel(apdt.ml.TFModel):
     def def_model(self, **kwarg):
-        self.input = tf.placeholder(tf.float32, shape=(1, 9, 730, 1))
+        self.input = tf.placeholder(tf.float32, shape=(1, 9, 730, 6))
         self.learning_rate = tf.placeholder(tf.float32, name='learning_rate')
         self.pred, self.loss = apdt.ml.WaveNet(self.input[0], apdt.ml.wavenet_weight(), 'wavenet')
 
@@ -25,4 +27,4 @@ class MyModel(apdt.ml.TFModel):
 model = MyModel()
 
 # Start Training
-model.fit(dataset, baseline=10.0)
+model.fit(dataset, baseline=10.0, epoch=300)
