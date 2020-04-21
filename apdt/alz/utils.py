@@ -54,7 +54,7 @@ def IDW(sloc, svalue, tloc, scale=0.05, kernel='exp'):
     for i in range(sloc.shape[0]):
         _w = kernel(-distance[i,:]/(distance_std*scale))
         weight.append(_w)
-    weight = np.array(weight)
+    weight = np.array(weight) + 1e-99
     weight = weight/np.sum(weight,0)
     result = np.matmul(svalue.T, weight).T
     return result

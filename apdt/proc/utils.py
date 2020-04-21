@@ -29,6 +29,9 @@ def linear_normalize(datapack, columns='data0', method='99pt'):
         if method=='99pt':
             series_max = np.percentile(series, 99)
             series_min = np.percentile(series, 1)
+        if method=='999pt':
+            series_max = np.percentile(series, 99.9)
+            series_min = np.percentile(series, 0.1)
         if method=='3std':
             series_max = np.mean(series) + 3 * np.std(series)
             series_min = series_max - 6 * np.std(series)
