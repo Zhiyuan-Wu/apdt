@@ -218,5 +218,3 @@ def load_weather(site, start_date, end_date=None, feature='temperature', **kwarg
     artifact.tag.append('time-aligned')
 
     return artifact
-
-    debug = np.array([2,3,3])

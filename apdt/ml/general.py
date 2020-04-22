@@ -159,6 +159,7 @@ class TFModel():
         self.input = None
         self.learning_rate = 0
         self.loss = 0
+        self.pred = 0
 
     def setup_train_op(self, **kwarg):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
@@ -167,11 +168,16 @@ class TFModel():
         gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
         self.train_op = optimizer.apply_gradients(gvs)
 
+    def load(self, path):
+        self.saver.restore(self.sess, save_path=path)
+
     def update(self, data):
         pass
 
     def eval(self, data):
-        pass
+        feed_dict = {self.learning_rate: 0.0, self.input: data}
+        result = self.sess.run(self.pred, feed_dict)
+        return result
 
     def fit(self, dataset, **kwarg):
         # parameter checking
