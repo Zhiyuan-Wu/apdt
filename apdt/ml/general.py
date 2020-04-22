@@ -25,10 +25,11 @@ class DataSet():
         method: str
             If this argument is defined, we will use sepecific pre-defined pre_process fuction.
             Avaliable:
-            - 'window': use a non-overlapping window across time-axis to generate samples. locations in a time slice are supposed to be same (i.e. fixed-station). a samlple will be a N*T*D array. where N is the number of locations, T is window length and D is feature dimensions.
+            - 'window': use a sliding window across time-axis to generate samples. locations in a time slice are supposed to be same (i.e. fixed-station). a samlple will be a N*T*D array. where N is the number of locations, T is window length and D is feature dimensions.
                 argument for 'window':
                 - split_ratio=0.7: the ratio of training set;
                 - seq_len=100: the window length;
+                - strides=seq_len-1: the sliding step;
                 - normalize=True: if we do 0-1 normalize, Warning: dataset should always be properly normalized, and this operation is a in-place operation.
                 - feature=['data0', 'data1', ...]: the feature list to be used. default to all features avaliable.
 
@@ -71,6 +72,8 @@ class DataSet():
                 kwarg['shuffle'] = True
             if 'seq_len' not in kwarg.keys():
                 kwarg['seq_len'] = 100
+            if 'strides' not in kwarg.keys():
+                kwarg['strides'] = kwarg['seq_len'] - 1
             if 'normalize' not in kwarg.keys():
                 kwarg['normalize'] = True
             if 'normalize_method' not in kwarg.keys():
@@ -89,16 +92,19 @@ class DataSet():
             split_point = int(T * kwarg['split_ratio'])
             self.tr = self.data[:split_point]
             self.te = self.data[split_point:]
-            self.seq_len = kwarg['seq_len']
-            self.tr_batch_num = self.tr.shape[0]//kwarg['seq_len']
-            self.te_batch_num = self.te.shape[0]//kwarg['seq_len']
+            self.tr_batch_num = (self.tr.shape[0]-kwarg['seq_len']+1+kwarg['strides'])//(kwarg['strides']+1)
+            self.te_batch_num = (self.te.shape[0]-kwarg['seq_len']+1+kwarg['strides'])//(kwarg['strides']+1)
             if self.tr_batch_num == 0 or self.te_batch_num == 0:
                 raise Exception("time_length is not enough to construct a window.")
             
-            self.tr = self.tr[:self.tr_batch_num * self.seq_len]
-            self.te = self.te[:self.te_batch_num * self.seq_len]
-            self.tr = self.tr.reshape((-1, self.seq_len, N, D))
-            self.te = self.te.reshape((-1, self.seq_len, N, D))
+            self.tr_list = []
+            self.te_list = []
+            for i in range(self.tr_batch_num):
+                self.tr_list.append(self.tr[i*(kwarg['strides']+1):i*(kwarg['strides']+1)+kwarg['seq_len']])
+            for i in range(self.te_batch_num):
+                self.te_list.append(self.te[i*(kwarg['strides']+1):i*(kwarg['strides']+1)+kwarg['seq_len']])
+            self.tr = np.array(self.tr_list)
+            self.te = np.array(self.te_list)
             self.tr = np.transpose(self.tr, (0,2,1,3))
             self.te = np.transpose(self.te, (0,2,1,3))
 
