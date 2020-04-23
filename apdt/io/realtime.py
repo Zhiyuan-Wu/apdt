@@ -117,7 +117,7 @@ def get_weather_pred(lon,lat,feature='temperature',secret_key=None):
     time_stamp = time.time()
     req_loc = '{0:f},{1:f}'.format(lat,lon)
     req = 'https://api.darksky.net/forecast/'+secret_key+'/'+req_loc
-    file = 'data/.temp/'+req_loc+str(time.gmtime(time_stamp+8*3600).tm_hour)+'.json'
+    file = 'data/.temp/'+req_loc+time.strftime('%Y-%m-%d-%H',time.gmtime(time_stamp+8*3600))+'.json'
     if os.path.exists(file):
         with open(file, 'r') as result_file:
             data = json.load(result_file)
