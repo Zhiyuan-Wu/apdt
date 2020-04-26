@@ -13,7 +13,7 @@ class DataSet():
         Dataset object consist of three parts: pre_process, get_data, and post_process.
 
         - pre_process is to make DataPack obejct into a ML-ready ndarray self.tr and self.te, which have size N*D_1*D_2*...; The first dimension is considered as independent sample index; Beside this, two variable self.tr_batch_num and self.te_batch_num which claims the coressponding sample number should also be defined.
-        - get_data has two key methods tr_get_batch and te_get_batch, will return a B*D_1*D_2*... as a batch of training/testing data.
+        - get_data has two key methods tr_get_batch and te_get_batch, will return a B*D_1*D_2*... as a batch of training/testing data, or list of ndarray when you need multi-input.
         - post_process defined the action that after every get_data call.
 
         In most case users have to re-define pre_process function to make their desired dataset structure. We also provide some pre-defined useful pre_process function for you. get_data and post_process typically don't need much work, but they can still be re-defined if you like.
@@ -146,6 +146,31 @@ class DataSet():
         return batch
 
 class TFModel():
+    '''Provide model constructure interface based on Tensorflow (1.x).
+    Description
+    -----------
+        There are some method of this class:
+
+        - def_model(): you HAVE TO re-define this function to build your deep network. this fuction should define self.input, self.learning_rate, self.loss, and self.pred. self.input should be a placeholder tensor or a list of such, where training batch passed to TFModel will be sent into; self.learning_rate should be a placeholder tensor of single float value, which will control the gradient scale; self.loss should be a tensor of single float value, which will be minimized bu optimizer; self.pred should be a placeholder tensor or a list of such, which will be the output to be evaluated given some input.
+
+        - fit(dataset): fit the model using given DataSet object. Note that please make sure the dataset structure is compatible with model's input interface.
+
+        - eval(data): evaluate the model using given data (ndarray or a list of such, depends on self.input).
+
+        - load(path): load parameters at given path.
+
+    Parameters
+    ----------
+        - fit:
+            - model_name='NewModel', str.
+            - learning_rate=1e-3, float.
+            - baseline=0, float. if the model loss is smaller than this, it will be automatically saved.
+            - epoch=100, int. How many times should we go through the dataset.
+            - print_every_n_epochs=1. int.
+            - test_every_n_epochs=1. int.
+            - learning_rate_decay_every_n_epochs=epoch+1. int. Disabled (i.e. fixed learning rate) as default.
+            - learning_rate_decay=2.0. float. after every learning_rate_decay_every_n_epochs, we will apply lr=lr/learning_rate_decay to slow down the training process.
+    '''
     def __init__(self, **kwarg):
         np.random.seed(0)
         tf.set_random_seed(0)
@@ -175,7 +200,11 @@ class TFModel():
         pass
 
     def eval(self, data):
-        feed_dict = {self.learning_rate: 0.0, self.input: data}
+        if type(self.input) is list:
+            feed_dict = {self.input[i]: data[i] for i in range(len(self.input))}
+            feed_dict.update{self.learning_rate: 0.0}
+        else:
+            feed_dict = {self.learning_rate: 0.0, self.input: data}
         result = self.sess.run(self.pred, feed_dict)
         return result
 
@@ -211,7 +240,11 @@ class TFModel():
             train_ls = []
             for _ in range(dataset.tr_batch_num):
                 batch = dataset.tr_get_batch()
-                feed_dict = {self.learning_rate: lr, self.input: batch}
+                if type(self.input) is list:
+                    feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
+                    feed_dict.update{self.learning_rate: lr}
+                else:
+                    feed_dict = {self.learning_rate: lr, self.input: batch}
                 _, ls = self.sess.run([self.train_op, self.loss], feed_dict)
                 train_ls.append(ls)
             
@@ -230,7 +263,11 @@ class TFModel():
                 test_ls = []
                 for _ in range(dataset.te_batch_num):
                     batch = dataset.te_get_batch()
-                    feed_dict = {self.learning_rate: lr, self.input: batch}
+                    if type(self.input) is list:
+                        feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
+                        feed_dict.update{self.learning_rate: lr}
+                    else:
+                        feed_dict = {self.learning_rate: lr, self.input: batch}
                     ls = self.sess.run(self.loss, feed_dict)
                     test_ls.append(ls)
                 test_ls = np.mean(test_ls)
