@@ -128,7 +128,7 @@ class DataSet():
         target_index = self.tr_batch_perm[self.tr_batch_counter: self.tr_batch_counter + batch_size]
         self.tr_batch_counter = self.tr_batch_counter + batch_size
         batch = self.tr[target_index]
-        batch = self.post_process(batch)
+        batch = self.post_process(batch, mode='train')
         return batch
     
     def te_get_batch(self, batch_size=1):
@@ -140,10 +140,10 @@ class DataSet():
         target_index = self.te_batch_perm[self.te_batch_counter: self.te_batch_counter + batch_size]
         self.te_batch_counter = self.te_batch_counter + batch_size
         batch = self.te[target_index]
-        batch = self.post_process(batch)
+        batch = self.post_process(batch, mode='test')
         return batch
 
-    def post_process(self, batch):
+    def post_process(self, batch, **kwarg):
         return batch
 
 class TFModel():
