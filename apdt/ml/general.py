@@ -216,6 +216,8 @@ class TFModel():
             kwarg['baseline'] = 0
         if 'epoch' not in kwarg.keys():
             kwarg['epoch'] = 100
+        if 'batch_size' not in kwarg.keys():
+            kwarg['batch_size'] = 1
         if 'print_every_n_epochs' not in kwarg.keys():
             kwarg['print_every_n_epochs'] = 1
         if 'test_every_n_epochs' not in kwarg.keys():
@@ -237,7 +239,7 @@ class TFModel():
             # update an epoch
             train_ls = []
             for _ in range(dataset.tr_batch_num):
-                batch = dataset.tr_get_batch()
+                batch = dataset.tr_get_batch(kwarg['batch_size'])
                 if type(self.input) is list:
                     feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
                     feed_dict.update({self.learning_rate: lr})
@@ -260,7 +262,7 @@ class TFModel():
             if (epoch+1)%kwarg['test_every_n_epochs'] == 0:
                 test_ls = []
                 for _ in range(dataset.te_batch_num):
-                    batch = dataset.te_get_batch()
+                    batch = dataset.te_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
                         feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
                         feed_dict.update({self.learning_rate: lr})
