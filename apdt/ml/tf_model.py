@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 import tensorflow as tf
 import numpy as np
 
@@ -26,15 +27,28 @@ def wavenet_weight(**kwarg):
         kwarg['n_hidden'] = 128
     if 'trainable' not in kwarg:
         kwarg['trainable'] = True
+    if 'share_param_between_layers' not in kwarg:
+        kwarg['share_param_between_layers'] = False
 
     with tf.variable_scope(kwarg['name']):
         res_channel=kwarg['res_channel']
         skip_channel=kwarg['skip_channel']
         bits = 5
         w = {}
-        w['kernel'] = tf.get_variable('kernel',[3, res_channel, 2*res_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-        w['1_by_1_res'] = tf.get_variable('1_by_1_res',[1, res_channel, res_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-        w['1_by_1_skip'] = tf.get_variable('1_by_1_skip',[1, res_channel, skip_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+        if kwarg['share_param_between_layers']:
+            k = 0
+            w['kernel_l'+str(k)] = tf.get_variable('kernel_l'+str(k),[3, res_channel, 2*res_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['1_by_1_res_l'+str(k)] = tf.get_variable('1_by_1_res_l'+str(k),[1, res_channel, res_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['1_by_1_skip_l'+str(k)] = tf.get_variable('1_by_1_skip_l'+str(k),[1, res_channel, skip_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            for k in range(1, kwarg['DilatedConvLayers']):
+                w['kernel_l'+str(k)] = w['kernel_l'+str(0)]
+                w['1_by_1_res_l'+str(k)] = w['1_by_1_res_l'+str(0)]
+                w['1_by_1_skip_l'+str(k)] = w['1_by_1_skip_l'+str(0)]
+        else:
+            for k in range(0, kwarg['DilatedConvLayers']):
+                w['kernel_l'+str(k)] = tf.get_variable('kernel_l'+str(k),[3, res_channel, 2*res_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+                w['1_by_1_res_l'+str(k)] = tf.get_variable('1_by_1_res_l'+str(k),[1, res_channel, res_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+                w['1_by_1_skip_l'+str(k)] = tf.get_variable('1_by_1_skip_l'+str(k),[1, res_channel, skip_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
         w['1_by_1_x'] = tf.get_variable('1_by_1_x', [1, kwarg['input_dim'], res_channel],initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
         w['1_by_1_skip1'] = tf.get_variable(
                     '1_by_1_skip1', [1, skip_channel*kwarg['DilatedConvLayers']+kwarg['input_dim'], kwarg['n_hidden']],
@@ -76,19 +90,19 @@ def WaveNet(input, weights, name, **kwarg):
     if 'loss' not in kwarg.keys():
         kwarg['loss'] = 'MAE'
 
-    def CasualResUnit(x,res_channel=kwarg['res_channel'],skip_channel=kwarg['skip_channel'],name='CasualResUnit'):
-        # n = x.shape[-1].value
-        w = weights['kernel']
+    def CasualResUnit(x,k,res_channel=kwarg['res_channel'],skip_channel=kwarg['skip_channel'],name='CasualResUnit'):
+        k = int(np.log(k)/np.log(kwarg['dilated']))
+        w = weights['kernel_l'+str(k)]
         _x = tf.pad(x,[[0,0],[2,0],[0,0]])
         y = tf.nn.conv1d(_x, w, 1, 'VALID')
         h,g = tf.split(y, 2, axis=-1)
         h = tf.tanh(h)
         g = tf.sigmoid(g)
         h = h*g
-        w = weights['1_by_1_res']
+        w = weights['1_by_1_res_l'+str(k)]
         o = tf.nn.conv1d(h, w, 1, 'SAME')
         o = o+x
-        w = weights['1_by_1_skip']
+        w = weights['1_by_1_skip_l'+str(k)]
         skip = tf.nn.conv1d(h, w, 1, 'SAME')
         return o,skip
     
@@ -104,7 +118,7 @@ def WaveNet(input, weights, name, **kwarg):
             _out = []
             _skip = []
             for i in range(dilated):
-                out, skip = CasualResUnit(x[:,:,i],res_channel=res_channel,skip_channel=skip_channel,name='CasualResUnit#'+str(i))
+                out, skip = CasualResUnit(x[:,:,i],dilated,res_channel=res_channel,skip_channel=skip_channel,name='CasualResUnit#'+str(i))
                 _out.append(out)
                 _skip.append(skip)
                 if i==0:

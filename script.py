@@ -3,8 +3,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-s = apdt.io.real_time_weather(112.5,34.1)
-gas_type = 'o3'
+gas_type = 'pm2d5'
 if os.path.exists('data/nanjing'+gas_type+'.pkl'):
     dataset = apdt.ml.DataSet('data/nanjing'+gas_type+'.pkl')
 else:
