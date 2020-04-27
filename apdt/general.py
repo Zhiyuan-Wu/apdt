@@ -42,6 +42,9 @@ class DataPack():
             else:
                 self.site_info = pd.concat([self.site_info, other.site_info]).drop_duplicates()
 
+        if self.site_info is not None:
+            self.site_num = self.site_info.shape[0]
+
         sample_unit_list = ['S', 'M', 'H', 'D', 'W', 'M', 'Y']
         self.sample_unit = sample_unit_list[min(sample_unit_list.index(self.sample_unit), 
                 sample_unit_list.index(other.sample_unit))]
