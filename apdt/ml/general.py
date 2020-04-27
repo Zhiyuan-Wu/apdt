@@ -1,3 +1,4 @@
+# pylint: disable=E1101
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -181,10 +182,7 @@ class TFModel():
         self.sess.run(tf.global_variables_initializer())
 
     def def_model(self, **kwarg):
-        self.input = None
-        self.learning_rate = 0
-        self.loss = 0
-        self.pred = 0
+        pass
 
     def setup_train_op(self, **kwarg):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
@@ -202,7 +200,7 @@ class TFModel():
     def eval(self, data):
         if type(self.input) is list:
             feed_dict = {self.input[i]: data[i] for i in range(len(self.input))}
-            feed_dict.update{self.learning_rate: 0.0}
+            feed_dict.update({self.learning_rate: 0.0})
         else:
             feed_dict = {self.learning_rate: 0.0, self.input: data}
         result = self.sess.run(self.pred, feed_dict)
@@ -242,7 +240,7 @@ class TFModel():
                 batch = dataset.tr_get_batch()
                 if type(self.input) is list:
                     feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                    feed_dict.update{self.learning_rate: lr}
+                    feed_dict.update({self.learning_rate: lr})
                 else:
                     feed_dict = {self.learning_rate: lr, self.input: batch}
                 _, ls = self.sess.run([self.train_op, self.loss], feed_dict)
@@ -265,7 +263,7 @@ class TFModel():
                     batch = dataset.te_get_batch()
                     if type(self.input) is list:
                         feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                        feed_dict.update{self.learning_rate: lr}
+                        feed_dict.update({self.learning_rate: lr})
                     else:
                         feed_dict = {self.learning_rate: lr, self.input: batch}
                     ls = self.sess.run(self.loss, feed_dict)
