@@ -234,7 +234,9 @@ class TFModel():
             os.mkdir('model/')
         os.mkdir('model/' + kwarg['model_name'] + version)
         lr = float(kwarg['learning_rate'])
-        performance_recorder = kwarg['baseline']
+        performance_recorder = 1e10
+        epoch_recorder = 0
+        start_time = time.time()
         for epoch in range(kwarg['epoch']):
             # update an epoch
             train_ls = []
@@ -275,7 +277,17 @@ class TFModel():
                 print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Test loss ',round(test_ls,4))
                 target = test_ls
                 if target < performance_recorder:
-                    self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
-                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
                     performance_recorder = target
+                    epoch_recorder = epoch
+                    if target < kwarg['baseline']:
+                        self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
+                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
+        
+        print('=======Training Summary=======')
+        print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(time.time()-start_time)))
+        if performance_recorder < 1e10:
+            print('Best model at epoch ', epoch_recorder, ', with loss ',performance_recorder)
+        if performance_recorder < kwarg['baseline']:
+            print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
+        print('Done.')            
         pass
