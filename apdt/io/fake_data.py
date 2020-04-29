@@ -10,7 +10,7 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=
         - time_length: int. How many hours should data have.
         - site_num: int. How many sites should data have.
         - dimension: int, default 1, How many independent sample each ST-point have.
-        - kernel_weight: list of three float numbers, default [1.0, 1.0, 1.0], the relevant variance of three components: long-term trend, short-term fluction and period wave.
+        - kernel_weight: list of three float numbers, default [1.0, 1.0, 1.0], the relevant variance of three components: long-term trend, short-term fluction and period wave. or list of six float numbers, where addional 3 will be considered as lenth_scale parameter of three kernels(0-1, default 1).
         - noise_level: float, default 0.01, the white noise add to kernel, note that this is neccessary for long time generation.
         - seed: int. The random seed. 
     Return
@@ -27,18 +27,21 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=
         kernel_weight = [kernel_weight]
     if noise_level is None:
         noise_level = 0.01
+    if len(kernel_weight[0])==3:
+        kernel_weight = [kernel_weight[i]+[1.0, 1.0, 1.0] for i in range(len(kernel_weight))]
     
     # Decrease this number if this program stuck.
     generation_step = 1000
 
     xs = np.arange(generation_step*2).reshape((generation_step*2,1))
-    k1 = gp.kernels.RBF(length_scale=100.0)
-    k2 = gp.kernels.Matern(length_scale=30.0, nu=0.5)
-    k3 = gp.kernels.ExpSineSquared(length_scale=1, periodicity=200)
-    kw = gp.kernels.WhiteKernel(noise_level=noise_level)
+    
 
     if len(kernel_weight)==1:
         # Case: Only one parameter is given, site_num will be treated as new dimension
+        k1 = gp.kernels.RBF(length_scale=50.0+100.0*kernel_weight[0][3])
+        k2 = gp.kernels.Matern(length_scale=20.0+10.0*kernel_weight[0][4], nu=0.5)
+        k3 = gp.kernels.ExpSineSquared(length_scale=1, periodicity=100+200*kernel_weight[0][5])
+        kw = gp.kernels.WhiteKernel(noise_level=noise_level)
         k = kernel_weight[0][0]*k1 + kernel_weight[0][1]*k2 + kernel_weight[0][2]*k3 + kw
         C = k(xs)
         C_11 = C[:generation_step,:generation_step]
@@ -63,6 +66,10 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=
         # Case: A list of parameter is given, generate site_num samples one by one
         sample_list_all = []
         for i in range(site_num):
+            k1 = gp.kernels.RBF(length_scale=50.0+100.0*kernel_weight[i][3])
+            k2 = gp.kernels.Matern(length_scale=20.0+10.0*kernel_weight[i][4], nu=0.5)
+            k3 = gp.kernels.ExpSineSquared(length_scale=1, periodicity=100+200*kernel_weight[i][5])
+            kw = gp.kernels.WhiteKernel(noise_level=noise_level)
             k = kernel_weight[i][0]*k1 + kernel_weight[i][1]*k2 + kernel_weight[i][2]*k3 + kw
             C = k(xs)
             C_11 = C[:generation_step,:generation_step]
