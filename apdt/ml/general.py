@@ -164,13 +164,14 @@ class TFModel():
     ----------
         - fit:
             - model_name='NewModel', str.
-            - learning_rate=1e-3, float.
+            - lr=1e-3, float.
             - baseline=0, float. if the model loss is smaller than this, it will be automatically saved.
             - epoch=100, int. How many times should we go through the dataset.
             - print_every_n_epochs=1. int.
             - test_every_n_epochs=1. int.
-            - learning_rate_decay_every_n_epochs=epoch+1. int. Disabled (i.e. fixed learning rate) as default.
-            - learning_rate_decay=2.0. float. after every learning_rate_decay_every_n_epochs, we will apply lr=lr/learning_rate_decay to slow down the training process.
+            - lr_annealing='constant'. str. How to decay learning rate during training. optional: 'constant', 'step', 'cosine'.
+            - lr_annealing_step_length=epoch/4. int. Avaliable when lr_annealing is set to 'step'. How often do we decay the learning rate.
+            - lr_annealing_step_divisor=2.0. float. Avaliable when lr_annealing is set to 'step', we will apply lr=lr/lr_annealing_step_divisor to slow down the training process.
     '''
     def __init__(self, **kwarg):
         np.random.seed(0)
@@ -210,8 +211,11 @@ class TFModel():
         # parameter checking
         if 'model_name' not in kwarg.keys():
             kwarg['model_name'] = 'NewModel'
-        if 'learning_rate' not in kwarg.keys():
-            kwarg['learning_rate'] = 1e-3
+        if 'lr' not in kwarg.keys():
+            if 'learning_rate' in kwarg.keys():
+                kwarg['lr'] = kwarg['learning_rate']
+            else:
+                kwarg['lr'] = 1e-3
         if 'baseline' not in kwarg.keys():
             kwarg['baseline'] = 0
         if 'epoch' not in kwarg.keys():
@@ -222,10 +226,12 @@ class TFModel():
             kwarg['print_every_n_epochs'] = 1
         if 'test_every_n_epochs' not in kwarg.keys():
             kwarg['test_every_n_epochs'] = 1
-        if 'learning_rate_decay_every_n_epochs' not in kwarg.keys():
-            kwarg['learning_rate_decay_every_n_epochs'] = kwarg['epoch'] + 1
-        if 'learning_rate_decay' not in kwarg.keys():
-            kwarg['learning_rate_decay'] = 2.0
+        if 'lr_annealing' not in kwarg.keys():
+            kwarg['lr_annealing'] = 'constant'
+        if 'lr_annealing_step_length' not in kwarg.keys():
+            kwarg['lr_annealing_step_length'] = int(kwarg['epoch']/4)
+        if 'lr_annealing_step_divisor' not in kwarg.keys():
+            kwarg['lr_annealing_step_divisor'] = 2.0
         if 'epoch' not in kwarg.keys():
             kwarg['epoch'] = 100
 
@@ -233,7 +239,7 @@ class TFModel():
         if not os.path.exists('model/'):
             os.mkdir('model/')
         os.mkdir('model/' + kwarg['model_name'] + version)
-        lr = float(kwarg['learning_rate'])
+        lr = float(kwarg['lr'])
         performance_recorder = 1e10
         epoch_recorder = 0
         start_time = time.time()
@@ -256,9 +262,12 @@ class TFModel():
                 print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
             
             # learning_rate_decay
-            if (epoch+1)%kwarg['learning_rate_decay_every_n_epochs'] == 0:
-                    lr = lr/kwarg['learning_rate_decay']
-                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
+            if kwarg['lr_annealing']=='step':
+                if (epoch+1)%kwarg['lr_annealing_step_length'] == 0:
+                        lr = lr/kwarg['lr_annealing_step_divisor']
+                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
+            elif kwarg['lr_annealing']=='cosine':
+                lr = float(kwarg['lr'])*(np.cos(epoch/kwarg['epoch']*np.pi)+1.0)/2
 
             # test
             if (epoch+1)%kwarg['test_every_n_epochs'] == 0:
