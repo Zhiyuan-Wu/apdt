@@ -176,15 +176,16 @@ def load_weather(site, start_date, end_date=None, feature='temperature', **kwarg
             file = 'data/weather/'+site_id+'/'+time.strftime('%Y-%m-%d',time.gmtime(time_now))+'.json'
             with open(file) as f:
                 data = json.load(f)
-                for k in range(len(data['hourly']['data'])):
-                    _stamp = int((data['hourly']['data'][k]['time']-stamp_bias)/3600)
-                    _data = data['hourly']['data'][k]
-                    for m in range(len(feature)):
-                        try:
-                            data_list[m].append(_data[feature[m]])
-                            time_stamp[m].append(_stamp)
-                        except:
-                            pass
+                if 'hourly' in data.keys():
+                    for k in range(len(data['hourly']['data'])):
+                        _stamp = int((data['hourly']['data'][k]['time']-stamp_bias)/3600)
+                        _data = data['hourly']['data'][k]
+                        for m in range(len(feature)):
+                            try:
+                                data_list[m].append(_data[feature[m]])
+                                time_stamp[m].append(_stamp)
+                            except:
+                                pass
             time_now += 24*3600
 
         # Linear interploation
