@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn import gaussian_process as gp
 
-def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=None, seed=None):
+def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=None, seed=None, freq='H'):
     '''Generate a fake PM2.5-like data for quick start using gaussian process.
     Parameters
     ----------
@@ -12,7 +12,8 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=
         - dimension: int, default 1, How many independent sample each ST-point have.
         - kernel_weight: list of three float numbers, default [1.0, 1.0, 1.0], the relevant variance of three components: long-term trend, short-term fluction and period wave. or list of six float numbers, where addional 3 will be considered as lenth_scale parameter of three kernels(0-1, default 1).
         - noise_level: float, default 0.01, the white noise add to kernel, note that this is neccessary for long time generation.
-        - seed: int. The random seed. 
+        - seed: int. The random seed.
+        - freq: str. the frequency of time stamp. 'H' for hour (default) and 'T' for minutes.
     Return
     ------
         DataPack
@@ -93,7 +94,7 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=
             sample_list_all.append(sample_list)
         sample_list = np.stack(sample_list_all, 1).reshape((time_length*site_num, dimension))
     
-    datetime_list = pd.date_range(start='2000-1-1',periods=time_length,freq='H')
+    datetime_list = pd.date_range(start='2000-1-1',periods=time_length,freq=freq)
     site_name_list = ['virtual_site'+str(i) for i in range(site_num)]
     idx = pd.MultiIndex.from_product([datetime_list, site_name_list],names=('datetime', 'site_name'))
     data = pd.DataFrame(index=idx, columns=['data'+str(i) for i in range(dimension)], data=sample_list)
@@ -110,7 +111,7 @@ def gp_data(time_length, site_num, dimension=1, kernel_weight=None, noise_level=
     datapack.data = data.copy()
     datapack.site_info = site_list
     datapack.data_type = ['virtual_type_'+str(i) for i in range(dimension)]
-    datapack.sample_unit = 'H'
+    datapack.sample_unit = freq
     datapack.tag.append('fixed-location')
     datapack.tag.append('time-aligned')
     datapack.time_length = time_length
