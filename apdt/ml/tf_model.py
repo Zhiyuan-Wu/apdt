@@ -164,6 +164,8 @@ def WaveNet(input, weights, name, **kwarg):
         kwarg['dilated'] = 3
     if 'loss' not in kwarg.keys():
         kwarg['loss'] = 'MAE'
+    if 'bits' not in kwarg.keys():
+        kwarg['bits'] = 5
 
     def CasualResUnit(x,k,res_channel=kwarg['res_channel'],skip_channel=kwarg['skip_channel'],name='CasualResUnit'):
         k = int(np.log(k)/np.log(kwarg['dilated']))
@@ -245,6 +247,6 @@ def WaveNet(input, weights, name, **kwarg):
                 loss = tf.sqrt(tf.reduce_mean(tf.square(pred-y)))
             return pred,loss
     
-    pred,loss = SingleChannelNetwork(input,0,5,u_law_encoder,u_law_decoder,name=name)
+    pred,loss = SingleChannelNetwork(input,0,kwarg['bits'],u_law_encoder,u_law_decoder,name=name)
     return pred,loss
 pass
