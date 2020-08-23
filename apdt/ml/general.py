@@ -162,7 +162,13 @@ class TFModel():
 
     Parameters
     ----------
-        - fit:
+        - model.__init__()
+            - l2_norm, float, default None.
+                A L2-Regularization will apllied with weight decay parameter as l2_norm, It will be disabled when given None.
+            - clip_gvs, bool, default True.
+                all gradients in network will be cliiped to [-1,1] when set True.
+        
+        - model.fit():
             - model_name='NewModel', str.
             - lr=1e-3, float.
             - baseline=0, float. if the model loss is smaller than this, it will be automatically saved.
@@ -186,10 +192,25 @@ class TFModel():
         pass
 
     def setup_train_op(self, **kwarg):
+        if 'l2_norm' not in kwarg.keys():
+            kwarg['l2_norm'] = None
+        if 'keep_norm_loss' not in kwarg.keys():
+            kwarg['keep_norm_loss'] = True
+        if 'clip_gvs' not in kwarg.keys():
+            kwarg['clip_gvs'] = True
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        gvs = optimizer.compute_gradients(self.loss)
-        clipped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-        gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
+        if kwarg['l2_norm']:
+            l2_loss =  kwarg['l2_norm'] * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()])
+            if kwarg['keep_norm_loss']:
+                self.loss = self.loss + l2_loss
+                gvs = optimizer.compute_gradients(self.loss)
+            else:
+                gvs = optimizer.compute_gradients(self.loss + l2_loss)
+        else:
+            gvs = optimizer.compute_gradients(self.loss)
+        if kwarg['clip_gvs']:
+            clipped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
+            gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
         self.train_op = optimizer.apply_gradients(gvs)
 
     def load(self, path):
