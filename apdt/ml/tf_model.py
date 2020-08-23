@@ -3,11 +3,17 @@ import tensorflow as tf
 import numpy as np
 
 def mlp_weight(**kwarg):
-    '''Construct weight for wavenet.
+    '''Construct weight for MLP.
     Parameter
     ---------
         name: str
             the variable name scope to be used.
+        input_dim: int, default 10
+            the number of input neurals
+        output_dim: int, default 10
+            the number of output neurals
+        n_hidden: list of int, default [128,128]
+            the number of hidden units, the length of list decide the number of layers.
     Return
     ------
         dict
@@ -36,7 +42,7 @@ def mlp_weight(**kwarg):
     
     return w
 
-def MLP(input, n_layers, output_dim, weights=None, **kwarg):
+def MLP(input, n_layers, output_dim, n_hidden=None, weights=None, **kwarg):
     '''Map a vector into another using MLP.
     Parameter
     ---------
@@ -57,8 +63,10 @@ def MLP(input, n_layers, output_dim, weights=None, **kwarg):
         Dropout is still not available now, because it shoule support automatic switch with training/testing condition.
         BN is not supported now.
     '''
+    if n_hidden is None:
+        n_hidden = [128]*n_layers
     if weights is None:
-        weights = mlp_weight(name='mlp',input_dim=input.shape[-1].value,output_dim=output_dim,n_hidden=[128]*n_layers)
+        weights = mlp_weight(name='mlp',input_dim=input.shape[-1].value,output_dim=output_dim,n_hidden=n_hiddend)
     if 'activation' not in kwarg:
         kwarg['activation'] = tf.nn.relu
     if 'dropout' not in kwarg:
@@ -67,13 +75,15 @@ def MLP(input, n_layers, output_dim, weights=None, **kwarg):
         kwarg['dropout_ratio'] = 0.5
     
     x = input
+    x_shape = x.shape
+    x = tf.reshape(x,[-1,x_shape[-1].value])
     for i in range(n_layers):
         x = tf.matmul(x, weights['weight'+str(i)]) + weights['bias'+str(i)]
         x = kwarg['activation'](x)
         if kwarg['dropout']:
             x = tf.nn.dropout(x, kwarg['dropout_ratio'])
     x = tf.matmul(x, weights['weightout']) + weights['biasout']
-    
+    x = tf.reshape(x,list(x_shape)[:-1]+[tf.Dimension(output_dim)])
     return x
     
     
@@ -237,7 +247,7 @@ def WaveNet(input, weights, name, **kwarg):
                     _skip.append(skip)
             skip = tf.concat(_skip,axis=-1)
             skip = tf.nn.relu(skip)
-            skip_raw
+            skip_raw = skip
             w = weights['1_by_1_skip1']
             skip = tf.nn.conv1d(skip, w, 1, 'SAME')
             skip = tf.nn.relu(skip)
