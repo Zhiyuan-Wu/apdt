@@ -207,6 +207,41 @@ class TFModel():
         result = self.sess.run(self.pred, feed_dict)
         return result
 
+    def _zip_run(self, target, feed_dict, _r=0):
+        '''Recurrently unzip lists in feed_dict to generate samples.
+        Description
+        -----------
+            Compared to self.sess.run(target, feed_dict), self._zip_run(target, feed_dict) support list values in feed_dict, where the average of unziped feed_dict will be returned.
+        
+        Parameters
+        ----------
+            target, TF tensor or a list of TF tensor
+                the tensorflow tensor to be evaluated.
+            feed_dict, dict
+                the feed data, list values supported.
+        
+        Returns
+        ----------
+            ndarray or a multi-level list of ndarray
+
+        Examples
+        ----------
+            If we run self._zip_run(self.loss, {imput:[x1,x2]}) it is equivalent to do: [self.session.run(self.loss, {input: x}) for x in [x1,x2]]
+        '''
+        if _r == len(feed_dict.keys()):
+            return self.sess.run(target, feed_dict)
+        else:
+            if type(list(feed_dict.values())[_r]) is list:
+                _result = []
+                for i in range(len(list(feed_dict.values())[_r])):
+                    _temp_dict = feed_dict.copy()
+                    _temp_dict[list(feed_dict.keys())[_r]] = list(feed_dict.values())[_r][i]
+                    # change _r+1 to _r to support multi-level lists.
+                    _result.append(self._zip_run(target, _temp_dict, _r+1))
+                return _result
+            else:
+                return self._zip_run(target, feed_dict, _r+1)
+
     def fit(self, dataset, **kwarg):
         # parameter checking
         if 'model_name' not in kwarg.keys():
@@ -279,7 +314,8 @@ class TFModel():
                         feed_dict.update({self.learning_rate: lr})
                     else:
                         feed_dict = {self.learning_rate: lr, self.input: batch}
-                    ls = self.sess.run(self.loss, feed_dict)
+                    # ls = self.sess.run(self.loss, feed_dict)
+                    ls = self._zip_run(self.loss, feed_dict)
                     test_ls.append(ls)
                 test_ls = np.mean(test_ls)
 
