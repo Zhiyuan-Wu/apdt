@@ -24,6 +24,7 @@ def mlp_weight(**kwarg):
     if 'trainable' not in kwarg:
         kwarg['trainable'] = True
     
+    w = {}
     with tf.variable_scope(kwarg['name']):
         hn = kwarg['input_dim']
         for i in range(len(kwarg['n_hidden'])):
@@ -166,6 +167,8 @@ def WaveNet(input, weights, name, **kwarg):
         kwarg['loss'] = 'MAE'
     if 'bits' not in kwarg.keys():
         kwarg['bits'] = 5
+    if 'return_type' not in kwarg.keys():
+        kwarg['return_type'] = 'pred+loss'
 
     def CasualResUnit(x,k,res_channel=kwarg['res_channel'],skip_channel=kwarg['skip_channel'],name='CasualResUnit'):
         k = int(np.log(k)/np.log(kwarg['dilated']))
@@ -234,6 +237,7 @@ def WaveNet(input, weights, name, **kwarg):
                     _skip.append(skip)
             skip = tf.concat(_skip,axis=-1)
             skip = tf.nn.relu(skip)
+            skip_raw
             w = weights['1_by_1_skip1']
             skip = tf.nn.conv1d(skip, w, 1, 'SAME')
             skip = tf.nn.relu(skip)
@@ -245,8 +249,11 @@ def WaveNet(input, weights, name, **kwarg):
                 loss = tf.reduce_mean(tf.abs(pred-y))
             elif kwarg['loss']=='RMSE':
                 loss = tf.sqrt(tf.reduce_mean(tf.square(pred-y)))
-            return pred,loss
+            return pred,loss,skip_raw
     
-    pred,loss = SingleChannelNetwork(input,0,kwarg['bits'],u_law_encoder,u_law_decoder,name=name)
-    return pred,loss
+    pred,loss,skip_raw = SingleChannelNetwork(input,0,kwarg['bits'],u_law_encoder,u_law_decoder,name=name)
+    if kwarg['return_type'] == 'pred+loss':
+        return pred,loss
+    elif kwarg['return_type'] == 'feature':
+        return skip_raw
 pass
