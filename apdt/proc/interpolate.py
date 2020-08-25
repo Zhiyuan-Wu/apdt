@@ -3,11 +3,7 @@ import pandas as pd
 import apdt
 import yaml
 
-import os
-current_path = os.path.dirname(__file__)
-config_path = os.path.abspath(current_path + '/../config.yaml')
-with open(config_path) as f:
-    _config = yaml.load(f, Loader=yaml.FullLoader)
+from apdt.config import _config
 
 def spatial_interplot(datapack, method='NN', columns='ALL', **kwarg):
     '''Using spatial interplotion to complete the missing value.

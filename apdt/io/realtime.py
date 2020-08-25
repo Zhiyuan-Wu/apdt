@@ -7,10 +7,7 @@ import json
 import os
 import requests
 
-current_path = os.path.dirname(__file__)
-config_path = os.path.abspath(current_path + '/../config.yaml')
-with open(config_path) as f:
-    _config = yaml.load(f, Loader=yaml.FullLoader)
+from apdt.config import _config
 
 def get_weather_history(t,lon,lat,feature='temperature',secret_key=None):
     '''Get weather data in the past. This function will have 1 darksky API use. 

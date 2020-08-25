@@ -6,11 +6,7 @@ import yaml
 import time
 import json
 
-import os
-current_path = os.path.dirname(__file__)
-config_path = os.path.abspath(current_path + '/../config.yaml')
-with open(config_path) as f:
-    _config = yaml.load(f, Loader=yaml.FullLoader)
+from apdt.config import _config
 
 def load_nms(site, start_date, end_date=None, gas='pm2d5'):
     '''Load national monitoring stations (NMS) data.
