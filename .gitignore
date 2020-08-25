@@ -6,3 +6,6 @@ model
 s.py
 sr.py
 t.py
+*egg-info
+build
+dist
