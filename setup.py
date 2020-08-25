@@ -1,4 +1,5 @@
 from setuptools import setup
+import setuptools
 with open("README.md") as fh:
     long_description = fh.read()
     
@@ -15,7 +16,8 @@ if __name__ == '__main__':
           long_description_content_type="text/markdown",          
           install_requires = ['numpy', 'pandas', 'sklearn'],
           license = 'Apache License Version 2.0',
-          py_modules = ['apdt'],
+          packages=setuptools.find_packages(),
+          include_package_data=True,
           classifiers = (
               "Development Status :: 4 - Beta",
               "Programming Language :: Python :: 3.7",
