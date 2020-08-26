@@ -1,6 +1,10 @@
 # pylint: disable=E1101
-import tensorflow as tf
 import numpy as np
+
+try:
+    import tensorflow as tf
+except:
+    pass
 
 def mlp_weight(**kwarg):
     '''Construct weight for MLP.

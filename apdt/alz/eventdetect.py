@@ -1,7 +1,11 @@
 from apdt.general import DataPack
 import numpy as np
-import pywt
 import pandas as pd
+
+try:
+    import pywt
+except:
+    pass
 
 def groups(dat,type):
     dgroups=dat.groupby(dat[type])

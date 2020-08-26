@@ -1,11 +1,15 @@
 # pylint: disable=E1101
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 import os
 import time
 import apdt
 import pickle
+
+try:
+    import tensorflow as tf
+except:
+    pass
 
 class DataSet():
     '''DataSet can make DataPack object being Machine Learning ready.

@@ -2,7 +2,6 @@
 from apdt.general import DataPack
 import numpy as np
 import pandas as pd
-import yaml
 import time
 import json
 import os
