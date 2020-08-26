@@ -1,11 +1,12 @@
 from setuptools import setup
 import setuptools
+from apdt import __version__
 with open("README.md") as fh:
     long_description = fh.read()
     
 if __name__ == '__main__':
     setup(name = 'apdt',
-          version = '0.1',
+          version = __version__,
           description = 'apdt',
           author = 'Zhiyuan-Wu',
           author_email = '86562713@qq.com',
