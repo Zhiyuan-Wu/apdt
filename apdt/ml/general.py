@@ -186,6 +186,7 @@ class TFModel():
     def __init__(self, **kwarg):
         np.random.seed(0)
         tf.set_random_seed(0)
+        self.training = tf.placeholder(tf.bool)
         self.def_model(**kwarg)
         self.setup_train_op(**kwarg)
         self.saver = tf.train.Saver()
@@ -215,7 +216,9 @@ class TFModel():
         if kwarg['clip_gvs']:
             clipped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
             gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
-        self.train_op = optimizer.apply_gradients(gvs)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            self.train_op = optimizer.apply_gradients(gvs)
 
     def load(self, path):
         self.saver.restore(self.sess, save_path=path)
@@ -226,9 +229,9 @@ class TFModel():
     def eval(self, data):
         if type(self.input) is list:
             feed_dict = {self.input[i]: data[i] for i in range(len(self.input))}
-            feed_dict.update({self.learning_rate: 0.0})
+            feed_dict.update({self.learning_rate: 0.0, self.training: False})
         else:
-            feed_dict = {self.learning_rate: 0.0, self.input: data}
+            feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: data}
         result = self.sess.run(self.pred, feed_dict)
         return result
 
@@ -310,9 +313,9 @@ class TFModel():
                 batch = dataset.tr_get_batch(kwarg['batch_size'])
                 if type(self.input) is list:
                     feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                    feed_dict.update({self.learning_rate: lr})
+                    feed_dict.update({self.learning_rate: lr, self.training: True})
                 else:
-                    feed_dict = {self.learning_rate: lr, self.input: batch}
+                    feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
                 _, ls = self.sess.run([self.train_op, self.loss], feed_dict)
                 train_ls.append(ls)
             
@@ -336,9 +339,9 @@ class TFModel():
                     batch = dataset.te_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
                         feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                        feed_dict.update({self.learning_rate: lr})
+                        feed_dict.update({self.learning_rate: 0.0, self.training: False})
                     else:
-                        feed_dict = {self.learning_rate: lr, self.input: batch}
+                        feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
                     # ls = self.sess.run(self.loss, feed_dict)
                     ls = self._zip_run(self.loss, feed_dict)
                     test_ls.append(ls)

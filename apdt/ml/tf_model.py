@@ -334,7 +334,11 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
             the u-law quatilization bit number. More bits leads to finner predcition resolution.
         return_type: str, optional 'pred+loss' (default), 'feature'
             the return type of function. 'feature' stands for raw causal features, 'pred' will further map it into a real number with mlp and u-law qutilization. 'loss' standis for the loss.
-        
+        batch_norm: bool, default False
+            if set True, a batch normalization layer will be add into conv kernel.
+        training: bool tensor
+            required only when batch_norm is set True. Typically you can use training=self.training.
+
     Return
     ------
         tensor 'pred'
@@ -365,6 +369,10 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
         kwarg['bits'] = 5
     if 'return_type' not in kwarg.keys():
         kwarg['return_type'] = 'pred+loss'
+    if 'batch_norm' not in kwarg.keys():
+        kwarg['batch_norm'] = False
+    if kwarg['batch_norm'] and 'training' not in kwarg.keys():
+        Exception('training parameters is required when batch norm is enabled.')
     
     if weights is None:
         weights = wavenet_weight(name=name, res_channel=kwarg['res_channel'], skip_channel=kwarg['skip_channel'],
@@ -382,6 +390,8 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
                 _x = tf.pad(x,[[0,0],[kwarg['dilated']**i * (kwarg['dilated'] - 1),0],[0,0]])
                 w = weights['kernel_l'+str(i)]
                 h = tf.nn.conv2d(tf.expand_dims(_x,1), tf.expand_dims(w,0), [1,1,1,1], 'VALID', dilations=[1,1,kwarg['dilated']**i,1])
+                if kwarg['batch_norm']:
+                    h = tf.layers.batch_normalization(h, training=kwarg['training'])
                 h,g = tf.split(h[:,0], 2, axis=-1)
                 h = tf.tanh(h)
                 g = tf.sigmoid(g)
