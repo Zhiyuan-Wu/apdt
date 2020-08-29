@@ -10,3 +10,4 @@ t.py
 *egg-info
 build
 dist
+*.sh

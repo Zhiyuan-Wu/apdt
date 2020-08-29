@@ -27,7 +27,7 @@ class MyModel(apdt.ml.TFModel):
     def def_model(self, **kwarg):
         self.input = tf.placeholder(tf.float32, shape=(1, len(site_list), 730, 1))
         self.learning_rate = tf.placeholder(tf.float32, name='learning_rate')
-        self.pred, self.loss = apdt.ml.WaveNet(self.input[0], apdt.ml.wavenet_weight(), 'wavenet')
+        self.pred, self.loss = apdt.ml.WaveNet(self.input[0], name='wavenet')
 
 # Set up the model
 model = MyModel()
