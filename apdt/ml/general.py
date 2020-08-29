@@ -87,8 +87,8 @@ class DataSet():
                 kwarg['feature'] = [x for x in datapack.data.columns if x.startswith('data')]
 
             self.method = 'window'
-            T = datapack.time_length
-            N = datapack.site_num
+            T = len(datapack.data.index.drop_duplicates()) 
+            N = len(datapack.data.site_id.drop_duplicates())
             D = len(kwarg['feature'])
             if kwarg['normalize']:
                 datapack = apdt.proc.linear_normalize(datapack, kwarg['feature'], kwarg['normalize_method'])
