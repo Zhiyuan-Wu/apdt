@@ -2,21 +2,25 @@
 """
 import numpy as np
 import pandas as pd
+import pickle
 import threading
 
 class DataPack():
     """DataPack is the standard data structure used by apdt.
     """
-    def __init__(self):
-        _empty_data = pd.DataFrame(columns=['datetime', 'lon', 'lat', 'data0'])
-        _empty_data['datetime'] = pd.to_datetime(_empty_data['datetime'])
-        _empty_data = _empty_data.set_index('datetime')
-        self.raw_data = _empty_data
-        self.data = _empty_data.copy()
-        self.site_info = None
-        self.data_type = ['data0']
-        self.sample_unit = None
-        self.tag = []
+    def __init__(self, path=None):
+        if path is None:
+            _empty_data = pd.DataFrame(columns=['datetime', 'lon', 'lat', 'data0'])
+            _empty_data['datetime'] = pd.to_datetime(_empty_data['datetime'])
+            _empty_data = _empty_data.set_index('datetime')
+            self.raw_data = _empty_data
+            self.data = _empty_data.copy()
+            self.site_info = None
+            self.data_type = ['data0']
+            self.sample_unit = None
+            self.tag = []
+        elif type(path) is str:
+            self.load(path)
 
     def reset(self):
         '''Reset data into just-loaded status.
@@ -67,8 +71,23 @@ class DataPack():
         self.data = self.data.set_index('datetime')
         return self
 
+    def dump(self, path):
+        '''Dump Datapack into pickle file. Be careful only standard class member will be stored.
+        '''
+        dumped_data = {'raw_data':self.raw_data, 'data': self.data, 'site_info': self.site_info,
+            'data_type': self.data_type, 'sample_unit': self.sample_unit, 'tag': self.tag}
+        with open(path, 'wb') as f:
+            pickle.dump(dumped_data, f, 1)
 
-
+    def load(self, path):
+        with open(path, 'rb') as f:
+            dumped_data = pickle.load(f)
+        self.raw_data = dumped_data['raw_data']
+        self.data = dumped_data['data']
+        self.site_info = dumped_data['site_info']
+        self.data_type = dumped_data['data_type']
+        self.sample_unit = dumped_data['sample_unit']
+        self.tag = dumped_data['tag']
 
     def add_row(self, datetime, lat=None, lon=None, value=None):
         '''Append rows into datapack. This fuction is usually used as virtual-sampling.

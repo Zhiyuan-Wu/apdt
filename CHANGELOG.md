@@ -1,7 +1,6 @@
 # Change Log
 
-## V0.1.2
-- 重写WaveNet，训练/推断速度大幅提升，移除了对输入序列长度的限制，更灵活的参数输入方式。
+
 
 ## V0.1
 
@@ -20,3 +19,11 @@
 - 初始化项目文档Introduction.md，但格式仍需调整；
 - 初始化变更日志CHANGELOG.md；
 - 构建script.py，以北京PM2.5预测为demo；
+
+#### V0.1.2
+- 重写WaveNet，训练/推断速度大幅提升，移除了对输入序列长度的限制，更灵活的参数输入方式。
+
+#### V0.1.3
+- WaveNet 增加BN层
+- TFModel增加全局训练/测试指示变量
+- DataPack增加dump/load方法
