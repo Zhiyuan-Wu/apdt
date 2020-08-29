@@ -4,6 +4,7 @@ __pycache__
 model
 *.jpg
 s.py
+script.py
 sr.py
 t.py
 *egg-info
