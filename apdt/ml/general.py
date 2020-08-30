@@ -171,6 +171,8 @@ class TFModel():
                 A L2-Regularization will apllied with weight decay parameter as l2_norm, It will be disabled when given None.
             - clip_gvs, bool, default True.
                 all gradients in network will be cliiped to [-1,1] when set True.
+            - seed, int
+                The random seed to be set in Numpy and Tensorflow.
         
         - model.fit():
             - model_name='NewModel', str.
@@ -184,8 +186,9 @@ class TFModel():
             - lr_annealing_step_divisor=2.0. float. Avaliable when lr_annealing is set to 'step', we will apply lr=lr/lr_annealing_step_divisor to slow down the training process.
     '''
     def __init__(self, **kwarg):
-        np.random.seed(0)
-        tf.set_random_seed(0)
+        if 'seed' in kwarg.keys():
+            np.random.seed(kwarg['seed'])
+            tf.set_random_seed(kwarg['seed'])
         self.training = tf.placeholder(tf.bool)
         self.def_model(**kwarg)
         self.setup_train_op(**kwarg)
