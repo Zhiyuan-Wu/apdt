@@ -219,6 +219,7 @@ class TFModel():
             - lr_annealing='constant'. str. How to decay learning rate during training. optional: 'constant', 'step', 'cosine'.
             - lr_annealing_step_length=epoch/4. int. Avaliable when lr_annealing is set to 'step'. How often do we decay the learning rate.
             - lr_annealing_step_divisor=2.0. float. Avaliable when lr_annealing is set to 'step', we will apply lr=lr/lr_annealing_step_divisor to slow down the training process.
+            - early_stop=None. int. Stop training if there is no better validation result since last recorder. This parameter decides the waiting epoch number. If None this feature will be disabled.
     '''
     def __init__(self, **kwarg):
         if 'seed' in kwarg.keys():
@@ -351,7 +352,7 @@ class TFModel():
         os.mkdir('model/' + kwarg['model_name'] + version)
         lr = float(kwarg['lr'])
         performance_recorder = 1e10
-        epoch_recorder = 0
+        epoch_recorder = 1e10
         start_time = time.time()
         for epoch in range(kwarg['epoch']):
             # update an epoch
@@ -394,9 +395,9 @@ class TFModel():
                     ls = self._zip_run(self.loss, feed_dict)
                     val_ls.append(ls)
                 val_ls = np.mean(val_ls)
+                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val loss ',round(val_ls,4))
 
                 # save model
-                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val loss ',round(val_ls,4))
                 target = val_ls
                 if target < performance_recorder:
                     performance_recorder = target
@@ -406,6 +407,10 @@ class TFModel():
                         print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
 
                 # Early stop
+                if kwarg['early_stop']:
+                    if epoch >= epoch_recorder + kwarg['early_stop']:
+                        print('Early stop.')
+                        break
         
         # Final Test
         self.saver.restore(self.sess, save_path='model/'+kwarg['model_name']+version+'/model')
