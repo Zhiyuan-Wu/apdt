@@ -235,13 +235,18 @@ class TFModel():
         pass
 
     def setup_train_op(self, **kwarg):
+        # Parameter check
         if 'l2_norm' not in kwarg.keys():
             kwarg['l2_norm'] = None
         if 'keep_norm_loss' not in kwarg.keys():
             kwarg['keep_norm_loss'] = True
         if 'clip_gvs' not in kwarg.keys():
             kwarg['clip_gvs'] = True
+
+        # Set up optimizer
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        
+        # Add global regulizer
         if kwarg['l2_norm']:
             l2_loss =  kwarg['l2_norm'] * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()])
             if kwarg['keep_norm_loss']:
@@ -251,9 +256,13 @@ class TFModel():
                 gvs = optimizer.compute_gradients(self.loss + l2_loss)
         else:
             gvs = optimizer.compute_gradients(self.loss)
+        
+        # Clip Gradients
         if kwarg['clip_gvs']:
             clipped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
             gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
+        
+        # Check update ops.
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
             self.train_op = optimizer.apply_gradients(gvs)
