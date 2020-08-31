@@ -27,3 +27,9 @@
 - WaveNet 增加BN层
 - TFModel增加全局训练/测试指示变量
 - DataPack增加dump/load方法
+
+#### V0.1.4
+- Dataset支持训练、验证、测试三级划分，同时兼容训练、测试二级划分。
+- TFModel按验证最优报告测试性能
+- TFModel默认总是保存模型
+- TFModel支持自动重复训练，计算置信区间
