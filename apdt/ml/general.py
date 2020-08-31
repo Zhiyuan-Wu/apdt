@@ -334,16 +334,16 @@ class TFModel():
             kwarg['batch_size'] = 1
         if 'print_every_n_epochs' not in kwarg.keys():
             kwarg['print_every_n_epochs'] = 1
-        if 'test_every_n_epochs' not in kwarg.keys():
-            kwarg['test_every_n_epochs'] = 1
+        if 'val_every_n_epochs' not in kwarg.keys():
+            kwarg['val_every_n_epochs'] = 1
         if 'lr_annealing' not in kwarg.keys():
             kwarg['lr_annealing'] = 'constant'
         if 'lr_annealing_step_length' not in kwarg.keys():
             kwarg['lr_annealing_step_length'] = int(kwarg['epoch']/4)
         if 'lr_annealing_step_divisor' not in kwarg.keys():
             kwarg['lr_annealing_step_divisor'] = 2.0
-        if 'epoch' not in kwarg.keys():
-            kwarg['epoch'] = 100
+        if 'early_stop' not in kwarg.keys():
+            kwarg['early_stop'] = None
 
         version = time.strftime('%Y%m%d_%H%M%S')
         if not os.path.exists('model/'):
@@ -379,11 +379,12 @@ class TFModel():
             elif kwarg['lr_annealing']=='cosine':
                 lr = float(kwarg['lr'])*(np.cos(epoch/kwarg['epoch']*np.pi)+1.0)/2
 
-            # test
-            if (epoch+1)%kwarg['test_every_n_epochs'] == 0:
-                test_ls = []
-                for _ in range(dataset.te_batch_num):
-                    batch = dataset.te_get_batch(kwarg['batch_size'])
+            # validate
+            if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
+                # validate
+                val_ls = []
+                for _ in range(dataset.val_batch_num):
+                    batch = dataset.val_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
                         feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
                         feed_dict.update({self.learning_rate: 0.0, self.training: False})
@@ -391,22 +392,42 @@ class TFModel():
                         feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
                     # ls = self.sess.run(self.loss, feed_dict)
                     ls = self._zip_run(self.loss, feed_dict)
-                    test_ls.append(ls)
-                test_ls = np.mean(test_ls)
+                    val_ls.append(ls)
+                val_ls = np.mean(val_ls)
 
-                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Test loss ',round(test_ls,4))
-                target = test_ls
+                # save model
+                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val loss ',round(val_ls,4))
+                target = val_ls
                 if target < performance_recorder:
                     performance_recorder = target
                     epoch_recorder = epoch
                     if target < kwarg['baseline']:
                         self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
                         print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
+
+                # Early stop
         
+        # Final Test
+        self.saver.restore(self.sess, save_path='model/'+kwarg['model_name']+version+'/model')
+        test_ls = []
+        for _ in range(dataset.te_batch_num):
+            batch = dataset.te_get_batch(kwarg['batch_size'])
+            if type(self.input) is list:
+                feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
+                feed_dict.update({self.learning_rate: 0.0, self.training: False})
+            else:
+                feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
+            # ls = self.sess.run(self.loss, feed_dict)
+            ls = self._zip_run(self.loss, feed_dict)
+            test_ls.append(ls)
+        test_ls = np.mean(test_ls)
+
         print('=======Training Summary=======')
         print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(time.time()-start_time)))
         if performance_recorder < 1e10:
-            print('Best model at epoch ', epoch_recorder, ', with loss ',performance_recorder)
+            print('Best model at epoch ', epoch_recorder, ', with:')
+            print('Validation loss ', performance_recorder)
+            print('Test loss ', test_ls)
         if performance_recorder < kwarg['baseline']:
             print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
         print('Done.')            
