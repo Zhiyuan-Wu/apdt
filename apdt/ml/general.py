@@ -345,95 +345,132 @@ class TFModel():
             kwarg['lr_annealing_step_divisor'] = 2.0
         if 'early_stop' not in kwarg.keys():
             kwarg['early_stop'] = None
+        if 'repeat' not in kwarg.keys():
+            kwarg['repeat'] = 1
 
-        version = time.strftime('%Y%m%d_%H%M%S')
-        if not os.path.exists('model/'):
-            os.mkdir('model/')
-        os.mkdir('model/' + kwarg['model_name'] + version)
-        lr = float(kwarg['lr'])
-        performance_recorder = 1e10
-        epoch_recorder = 1e10
-        start_time = time.time()
-        for epoch in range(kwarg['epoch']):
-            # update an epoch
-            train_ls = []
-            for _ in range(dataset.tr_batch_num):
-                batch = dataset.tr_get_batch(kwarg['batch_size'])
-                if type(self.input) is list:
-                    feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                    feed_dict.update({self.learning_rate: lr, self.training: True})
-                else:
-                    feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
-                _, ls = self.sess.run([self.train_op, self.loss], feed_dict)
-                train_ls.append(ls)
-            
-            # print log
-            if (epoch+1)%kwarg['print_every_n_epochs'] == 0:
-                train_ls = np.mean(train_ls)
-                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
-            
-            # learning_rate_decay
-            if kwarg['lr_annealing']=='step':
-                if (epoch+1)%kwarg['lr_annealing_step_length'] == 0:
-                        lr = lr/kwarg['lr_annealing_step_divisor']
-                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
-            elif kwarg['lr_annealing']=='cosine':
-                lr = float(kwarg['lr'])*(np.cos(epoch/kwarg['epoch']*np.pi)+1.0)/2
+        repeat_name_set = []
+        repeat_loss_set = []
+        repeat_time_set = []
 
-            # validate
-            if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
-                # validate
-                val_ls = []
-                for _ in range(dataset.val_batch_num):
-                    batch = dataset.val_get_batch(kwarg['batch_size'])
+        for _repeat in range(kwarg['repeat']):
+            version = time.strftime('%Y%m%d_%H%M%S')
+            if not os.path.exists('model/'):
+                os.mkdir('model/')
+            os.mkdir('model/' + kwarg['model_name'] + version)
+            lr = float(kwarg['lr'])
+            performance_recorder = 1e10
+            epoch_recorder = 1e10
+            start_time = time.time()
+
+            # Reset parameters for repeat
+            if kwarg['repeat'] > 1:
+                np.random.seed(_repeat)
+                tf.set_random_seed(_repeat)
+                self.sess.run(tf.global_variables_initializer())
+                print('Repeat ', _repeat, 'Start.')
+
+            # Start training
+            for epoch in range(kwarg['epoch']):
+                # update an epoch
+                train_ls = []
+                for _ in range(dataset.tr_batch_num):
+                    batch = dataset.tr_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
                         feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                        feed_dict.update({self.learning_rate: 0.0, self.training: False})
+                        feed_dict.update({self.learning_rate: lr, self.training: True})
                     else:
-                        feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
-                    # ls = self.sess.run(self.loss, feed_dict)
-                    ls = self._zip_run(self.loss, feed_dict)
-                    val_ls.append(ls)
-                val_ls = np.mean(val_ls)
-                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val loss ',round(val_ls,4))
+                        feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
+                    _, ls = self.sess.run([self.train_op, self.loss], feed_dict)
+                    train_ls.append(ls)
+                
+                # print log
+                if (epoch+1)%kwarg['print_every_n_epochs'] == 0:
+                    train_ls = np.mean(train_ls)
+                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+                
+                # learning_rate_decay
+                if kwarg['lr_annealing']=='step':
+                    if (epoch+1)%kwarg['lr_annealing_step_length'] == 0:
+                            lr = lr/kwarg['lr_annealing_step_divisor']
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
+                elif kwarg['lr_annealing']=='cosine':
+                    lr = float(kwarg['lr'])*(np.cos(epoch/kwarg['epoch']*np.pi)+1.0)/2
 
-                # save model
-                target = val_ls
-                if target < performance_recorder:
-                    performance_recorder = target
-                    epoch_recorder = epoch
-                    self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
-                    if target < kwarg['baseline']:
-                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
+                # validate
+                if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
+                    # validate
+                    val_ls = []
+                    for _ in range(dataset.val_batch_num):
+                        batch = dataset.val_get_batch(kwarg['batch_size'])
+                        if type(self.input) is list:
+                            feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
+                            feed_dict.update({self.learning_rate: 0.0, self.training: False})
+                        else:
+                            feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
+                        # ls = self.sess.run(self.loss, feed_dict)
+                        ls = self._zip_run(self.loss, feed_dict)
+                        val_ls.append(ls)
+                    val_ls = np.mean(val_ls)
+                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val loss ',round(val_ls,4))
 
-                # Early stop
-                if kwarg['early_stop']:
-                    if epoch >= epoch_recorder + kwarg['early_stop']:
-                        print('Early stop.')
-                        break
+                    # save model
+                    target = val_ls
+                    if target < performance_recorder:
+                        performance_recorder = target
+                        epoch_recorder = epoch
+                        self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
+                        if target < kwarg['baseline']:
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
+
+                    # Early stop
+                    if kwarg['early_stop']:
+                        if epoch >= epoch_recorder + kwarg['early_stop']:
+                            print('Early stop.')
+                            break
+            
+            # Final Test
+            self.saver.restore(self.sess, save_path='model/'+kwarg['model_name']+version+'/model')
+            test_ls = []
+            for _ in range(dataset.te_batch_num):
+                batch = dataset.te_get_batch(kwarg['batch_size'])
+                if type(self.input) is list:
+                    feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
+                    feed_dict.update({self.learning_rate: 0.0, self.training: False})
+                else:
+                    feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
+                # ls = self.sess.run(self.loss, feed_dict)
+                ls = self._zip_run(self.loss, feed_dict)
+                test_ls.append(ls)
+            test_ls = np.mean(test_ls)
+
+            repeat_loss_set.append(test_ls)
+            repeat_name_set.append(kwarg['model_name']+version)
+            repeat_time_set.append(time.time()-start_time)
+            print('=======Training Summary=======')
+            print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(time.time()-start_time)))
+            if performance_recorder < 1e10:
+                print('Best model at epoch ', epoch_recorder, ', with:')
+                print('Validation loss ', performance_recorder)
+                print('Test loss ', test_ls)
+            if performance_recorder < kwarg['baseline']:
+                print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
+
+            # Here ends a pereat.
         
-        # Final Test
-        self.saver.restore(self.sess, save_path='model/'+kwarg['model_name']+version+'/model')
-        test_ls = []
-        for _ in range(dataset.te_batch_num):
-            batch = dataset.te_get_batch(kwarg['batch_size'])
-            if type(self.input) is list:
-                feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                feed_dict.update({self.learning_rate: 0.0, self.training: False})
-            else:
-                feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
-            # ls = self.sess.run(self.loss, feed_dict)
-            ls = self._zip_run(self.loss, feed_dict)
-            test_ls.append(ls)
-        test_ls = np.mean(test_ls)
+        # Compute repeat summary
+        if kwarg['repeat'] > 1:
+            test_ls_mean = np.mean(repeat_loss_set)
+            test_ls_std = np.std(repeat_loss_set)
+            total_time = np.sum(repeat_time_set)
+            print('=======Repeat Summary=======')
+            print('Repeat: ', kwarg['repeat'])
+            print('Model list: ', repeat_name_set)
+            print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(total_time)))
+            print('Test loss: ', repeat_loss_set)
+            print('Average loss: ', test_ls_mean)
+            print('95 confidence interval: ', test_ls_std*1.96, '(',test_ls_mean-test_ls_std*1.96,'~',test_ls_mean+test_ls_std*1.96,')')
+            if performance_recorder < kwarg['baseline']:
+                print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
 
-        print('=======Training Summary=======')
-        print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(time.time()-start_time)))
-        if performance_recorder < 1e10:
-            print('Best model at epoch ', epoch_recorder, ', with:')
-            print('Validation loss ', performance_recorder)
-            print('Test loss ', test_ls)
-        if performance_recorder < kwarg['baseline']:
-            print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
         print('Done.')            
         pass
