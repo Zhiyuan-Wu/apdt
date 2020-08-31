@@ -402,8 +402,8 @@ class TFModel():
                 if target < performance_recorder:
                     performance_recorder = target
                     epoch_recorder = epoch
+                    self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
                     if target < kwarg['baseline']:
-                        self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
                         print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
 
                 # Early stop
