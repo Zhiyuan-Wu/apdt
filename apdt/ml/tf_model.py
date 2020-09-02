@@ -95,15 +95,12 @@ def MLP(input, n_layers=None, output_dim=None, n_hidden=None, weights=None, name
         kwarg['dropout_ratio'] = 0.5
     
     x = input
-    x_shape = x.shape
-    x = tf.reshape(x,[-1,x_shape[-1].value])
     for i in range(n_layers):
-        x = tf.matmul(x, weights['weight'+str(i)]) + weights['bias'+str(i)]
+        x = tf.tensordot(x, weights['weight'+str(i)], 1) + weights['bias'+str(i)]
         x = kwarg['activation'](x)
         if kwarg['dropout']:
             x = tf.nn.dropout(x, kwarg['dropout_ratio'])
-    x = tf.matmul(x, weights['weightout']) + weights['biasout']
-    x = tf.reshape(x,list(x_shape)[:-1]+[tf.Dimension(output_dim)])
+    x = tf.tensordot(x, weights['weightout'], 1) + weights['biasout']
     return x
     
     
