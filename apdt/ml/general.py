@@ -227,10 +227,6 @@ class TFModel():
             - early_stop=None. int. Stop training if there is no better validation result since last recorder. This parameter decides the waiting epoch number. If None this feature will be disabled.
     '''
     def __init__(self, **kwarg):
-        if 'seed' in kwarg.keys():
-            np.random.seed(kwarg['seed'])
-            tf.set_random_seed(kwarg['seed'])
-        
         # Initial tensor
         self.training = tf.placeholder(tf.bool)
         self.learning_rate = tf.placeholder(tf.float32)
@@ -242,17 +238,20 @@ class TFModel():
         # Define Model
         self.def_model(**kwarg)
         if self.loss is not None:
+            if self.metric is None:
+                self.metric = self.loss
             self.setup_train_op(**kwarg)
         else:
-            raise Exception('self.loss not defined in your model.')
-        if self.metric is None:
-            self.metric = self.loss
+            raise Exception('self.loss not defined in your model.')        
         if self.pred is None:
             self.pred = self.metric
         
         # Start Engine
         self.saver = tf.train.Saver()
         self.sess = tf.Session()
+        if 'seed' in kwarg.keys():
+            np.random.seed(kwarg['seed'])
+            tf.set_random_seed(kwarg['seed'])
         self.sess.run(tf.global_variables_initializer())
 
     def def_model(self, **kwarg):
