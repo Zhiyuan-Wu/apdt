@@ -191,7 +191,12 @@ class TFModel():
     -----------
         There are some method of this class:
 
-        - def_model(): you HAVE TO re-define this function to build your deep network. this fuction should define self.input, self.learning_rate, self.loss, and self.pred. self.input should be a placeholder tensor or a list of such, where training batch passed to TFModel will be sent into; self.learning_rate should be a placeholder tensor of single float value, which will control the gradient scale; self.loss should be a tensor of single float value, which will be minimized bu optimizer; self.pred should be a placeholder tensor or a list of such, which will be the output to be evaluated given some input.
+        - def_model(): you HAVE TO re-define this function to build your deep network. this fuction should define:
+            - self.input, self.input should be a placeholder tensor or a list of such, where training batch passed to TFModel will be sent into;
+            - self.metric, self.metric should be a tensor, which will be print during training, and will by default be set to self.loss;
+            - self.loss, self.loss should be a tensor of single float value, which will be minimized by optimizer;
+            - self.pred. self.pred should be a tensor or a list of such, which will be the output to be evaluated given some input.
+            - self.learning_rate (optional), self.learning_rate should be a placeholder tensor of single float value, which will control the gradient scale;
 
         - fit(dataset): fit the model using given DataSet object. Note that please make sure the dataset structure is compatible with model's input interface.
 
@@ -225,9 +230,27 @@ class TFModel():
         if 'seed' in kwarg.keys():
             np.random.seed(kwarg['seed'])
             tf.set_random_seed(kwarg['seed'])
+        
+        # Initial tensor
         self.training = tf.placeholder(tf.bool)
+        self.learning_rate = tf.placeholder(tf.float32)
+        self.input = [None]
+        self.pred = None
+        self.loss = None
+        self.metric = None
+
+        # Define Model
         self.def_model(**kwarg)
-        self.setup_train_op(**kwarg)
+        if self.loss is not None:
+            self.setup_train_op(**kwarg)
+        else:
+            raise Exception('self.loss not defined in your model.')
+        if self.metric is None:
+            self.metric = self.loss
+        if self.pred is None:
+            self.pred = self.metric
+        
+        # Start Engine
         self.saver = tf.train.Saver()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -333,6 +356,8 @@ class TFModel():
             kwarg['epoch'] = 100
         if 'batch_size' not in kwarg.keys():
             kwarg['batch_size'] = 1
+        if 'print_type' not in kwarg.keys():
+            kwarg['print_type'] = 'metric'
         if 'print_every_n_epochs' not in kwarg.keys():
             kwarg['print_every_n_epochs'] = 1
         if 'val_every_n_epochs' not in kwarg.keys():
@@ -349,7 +374,7 @@ class TFModel():
             kwarg['repeat'] = 1
 
         repeat_name_set = []
-        repeat_loss_set = []
+        repeat_metric_set = []
         repeat_time_set = []
 
         for _repeat in range(kwarg['repeat']):
@@ -373,6 +398,7 @@ class TFModel():
             for epoch in range(kwarg['epoch']):
                 # update an epoch
                 train_ls = []
+                train_me = []
                 for _ in range(dataset.tr_batch_num):
                     batch = dataset.tr_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
@@ -380,13 +406,20 @@ class TFModel():
                         feed_dict.update({self.learning_rate: lr, self.training: True})
                     else:
                         feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
-                    _, ls = self.sess.run([self.train_op, self.loss], feed_dict)
+                    _, ls, me = self.sess.run([self.train_op, self.loss, self.metric], feed_dict)
                     train_ls.append(ls)
+                    train_me.append(me)
                 
                 # print log
                 if (epoch+1)%kwarg['print_every_n_epochs'] == 0:
                     train_ls = np.mean(train_ls)
-                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+                    train_me = np.mean(train_me)
+                    if kwarg['print_type']=='metric':
+                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train metric ',round(train_me,4))
+                    elif kwarg['print_type']=='loss':
+                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+                    else:
+                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4), '. Train metric ',round(train_me,4))
                 
                 # learning_rate_decay
                 if kwarg['lr_annealing']=='step':
@@ -399,7 +432,7 @@ class TFModel():
                 # validate
                 if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
                     # validate
-                    val_ls = []
+                    val_me = []
                     for _ in range(dataset.val_batch_num):
                         batch = dataset.val_get_batch(kwarg['batch_size'])
                         if type(self.input) is list:
@@ -408,13 +441,13 @@ class TFModel():
                         else:
                             feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
                         # ls = self.sess.run(self.loss, feed_dict)
-                        ls = self._zip_run(self.loss, feed_dict)
-                        val_ls.append(ls)
-                    val_ls = np.mean(val_ls)
-                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val loss ',round(val_ls,4))
+                        me = self._zip_run(self.loss, feed_dict)
+                        val_me.append(me)
+                    val_me = np.mean(val_me)
+                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(val_me,4))
 
                     # save model
-                    target = val_ls
+                    target = val_me
                     if target < performance_recorder:
                         performance_recorder = target
                         epoch_recorder = epoch
@@ -430,7 +463,7 @@ class TFModel():
             
             # Final Test
             self.saver.restore(self.sess, save_path='model/'+kwarg['model_name']+version+'/model')
-            test_ls = []
+            test_me = []
             for _ in range(dataset.te_batch_num):
                 batch = dataset.te_get_batch(kwarg['batch_size'])
                 if type(self.input) is list:
@@ -439,19 +472,19 @@ class TFModel():
                 else:
                     feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
                 # ls = self.sess.run(self.loss, feed_dict)
-                ls = self._zip_run(self.loss, feed_dict)
-                test_ls.append(ls)
-            test_ls = np.mean(test_ls)
+                me = self._zip_run(self.loss, feed_dict)
+                test_me.append(me)
+            test_me = np.mean(test_me)
 
-            repeat_loss_set.append(test_ls)
+            repeat_metric_set.append(test_me)
             repeat_name_set.append(kwarg['model_name']+version)
             repeat_time_set.append(time.time()-start_time)
             print('=======Training Summary=======')
             print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(time.time()-start_time)))
             if performance_recorder < 1e10:
                 print('Best model at epoch ', epoch_recorder, ', with:')
-                print('Validation loss ', performance_recorder)
-                print('Test loss ', test_ls)
+                print('Validation metric ', performance_recorder)
+                print('Test metric ', test_me)
             if performance_recorder < kwarg['baseline']:
                 print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
 
@@ -459,14 +492,14 @@ class TFModel():
         
         # Compute repeat summary
         if kwarg['repeat'] > 1:
-            test_ls_mean = np.mean(repeat_loss_set)
-            test_ls_std = np.std(repeat_loss_set)
+            test_ls_mean = np.mean(repeat_metric_set)
+            test_ls_std = np.std(repeat_metric_set)
             total_time = np.sum(repeat_time_set)
             print('=======Repeat Summary=======')
             print('Repeat: ', kwarg['repeat'])
             print('Model list: ', repeat_name_set)
             print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(total_time)))
-            print('Test loss: ', repeat_loss_set)
+            print('Test loss: ', repeat_metric_set)
             print('Average loss: ', test_ls_mean)
             print('95 confidence interval: ', test_ls_std*1.96, '(',test_ls_mean-test_ls_std*1.96,'~',test_ls_mean+test_ls_std*1.96,')')
             if performance_recorder < kwarg['baseline']:
