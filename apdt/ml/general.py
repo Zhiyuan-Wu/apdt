@@ -440,7 +440,7 @@ class TFModel():
                         else:
                             feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
                         # ls = self.sess.run(self.loss, feed_dict)
-                        me = self._zip_run(self.loss, feed_dict)
+                        me = self._zip_run(self.metric, feed_dict)
                         val_me.append(me)
                     val_me = np.mean(val_me)
                     print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(val_me,4))
@@ -471,7 +471,7 @@ class TFModel():
                 else:
                     feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
                 # ls = self.sess.run(self.loss, feed_dict)
-                me = self._zip_run(self.loss, feed_dict)
+                me = self._zip_run(self.metric, feed_dict)
                 test_me.append(me)
             test_me = np.mean(test_me)
 
