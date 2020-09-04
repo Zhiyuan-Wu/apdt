@@ -377,10 +377,15 @@ class TFModel():
         repeat_time_set = []
 
         for _repeat in range(kwarg['repeat']):
-            version = time.strftime('%Y%m%d_%H%M%S')
             if not os.path.exists('model/'):
                 os.mkdir('model/')
-            os.mkdir('model/' + kwarg['model_name'] + version)
+            while 1:
+                version = time.strftime('%Y%m%d_%H%M%S')
+                try:
+                    os.mkdir('model/' + kwarg['model_name'] + version)
+                    break
+                except FileExistsError:
+                    time.sleep(np.random.rand())           
             lr = float(kwarg['lr'])
             performance_recorder = 1e10
             epoch_recorder = 1e10
