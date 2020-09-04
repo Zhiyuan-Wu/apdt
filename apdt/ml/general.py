@@ -385,7 +385,7 @@ class TFModel():
                     os.mkdir('model/' + kwarg['model_name'] + version)
                     break
                 except FileExistsError:
-                    time.sleep(np.random.rand())           
+                    time.sleep(1)           
             lr = float(kwarg['lr'])
             performance_recorder = 1e10
             epoch_recorder = 1e10
