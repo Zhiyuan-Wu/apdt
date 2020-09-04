@@ -80,6 +80,8 @@ def MLP(input, n_layers=None, output_dim=None, n_hidden=None, weights=None, name
             output_dim = 10
         if n_hidden is None:
             n_hidden = [128]*n_layers
+        if type(n_hidden) is int:
+            n_hidden = [n_hidden]*n_layers
         weights = mlp_weight(name=name,input_dim=input.shape[-1].value,output_dim=output_dim,n_hidden=n_hidden)
     else:
         if n_layers is None:
