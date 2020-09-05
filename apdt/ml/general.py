@@ -353,6 +353,11 @@ class TFModel():
                 which tensor we test on. optional: ['metric', 'loss']
             batch_size=1, int.
                 the batch size.
+
+        Returns
+        ------
+            float,
+                the test result.
         '''
         if 'mode' not in kwarg.keys():
             kwarg['mode'] = 'te'
@@ -404,6 +409,12 @@ class TFModel():
         ------
             dataset, DataSet object.
                 the dataset.
+        Returns
+        ------
+            list of float.
+                the final test result. list length equals to the repeat number.
+            list of str.
+                the model name list. list length equals to the repeat number.
         '''
         # parameter checking
         if 'model_name' not in kwarg.keys():
