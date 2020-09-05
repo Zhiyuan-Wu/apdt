@@ -225,6 +225,7 @@ class TFModel():
             - lr_annealing_step_length=epoch/4. int. Avaliable when lr_annealing is set to 'step'. How often do we decay the learning rate.
             - lr_annealing_step_divisor=2.0. float. Avaliable when lr_annealing is set to 'step', we will apply lr=lr/lr_annealing_step_divisor to slow down the training process.
             - early_stop=None. int. Stop training if there is no better validation result since last recorder. This parameter decides the waiting epoch number. If None this feature will be disabled.
+            - repeat=1. int. If set >1, we will randomly reset parameters and retrain the model for certain times, and compute statistical performance.
     '''
     def __init__(self, **kwarg):
         # Initial tensor
@@ -340,7 +341,70 @@ class TFModel():
             else:
                 return self._zip_run(target, feed_dict, _r+1)
 
+    def test(self, dataset, **kwarg):
+        '''Test the model on given dataset.
+        Parameters
+        ------
+            dataset, DataSet object.
+                the dataset.
+            mode='te', str.
+                on which part of dataset we test on. optional: ['tr', 'val', 'te']
+            target='metric', str
+                which tensor we test on. optional: ['metric', 'loss']
+            batch_size=1, int.
+                the batch size.
+        '''
+        if 'mode' not in kwarg.keys():
+            kwarg['mode'] = 'te'
+        if 'target' not in kwarg.keys():
+            kwarg['mode'] = 'metric'
+        if 'batch_size' not in kwarg.keys():
+            kwarg['batch_size'] = 1
+        
+        if kwarg['mode'] in ['tr', 'train', 'training']:
+            batch_num = dataset.tr_batch_num
+            get_batch = dataset.tr_get_batch
+        elif kwarg['mode'] in ['val', 'validate', 'validation']:
+            batch_num = dataset.val_batch_num
+            get_batch = dataset.val_get_batch
+        elif kwarg['mode'] in ['te', 'test', 'testing']:
+            batch_num = dataset.te_batch_num
+            get_batch = dataset.te_get_batch
+        else:
+            raise Exception('Unsupport test mode.')
+        
+        if kwarg['target']=='metric':
+            target = self.metric
+        elif kwarg['target']=='loss':
+            target = self.loss
+        else:
+            raise Exception('Unsupport test target.')
+        
+        me_list = []
+        for _ in range(batch_num):
+            batch = get_batch(kwarg['batch_size'])
+            if type(self.input) is list:
+                feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
+                feed_dict.update({self.learning_rate: 0.0, self.training: False})
+            else:
+                feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
+            # ls = self.sess.run(self.loss, feed_dict)
+            me = self._zip_run(target, feed_dict)
+            me_list.append(me)
+        me_list = np.mean(me_list)
+
+        return me_list
+
     def fit(self, dataset, **kwarg):
+        '''Train the model on given dataset.
+
+        This function will train the model on the training set, keep the best model on validation set, and report its result on testing set. This proceduremay repeat for statistical perfomence analysis.
+
+        Parameters
+        ------
+            dataset, DataSet object.
+                the dataset.
+        '''
         # parameter checking
         if 'model_name' not in kwarg.keys():
             kwarg['model_name'] = 'NewModel'
@@ -436,18 +500,7 @@ class TFModel():
                 # validate
                 if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
                     # validate
-                    val_me = []
-                    for _ in range(dataset.val_batch_num):
-                        batch = dataset.val_get_batch(kwarg['batch_size'])
-                        if type(self.input) is list:
-                            feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                            feed_dict.update({self.learning_rate: 0.0, self.training: False})
-                        else:
-                            feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
-                        # ls = self.sess.run(self.loss, feed_dict)
-                        me = self._zip_run(self.metric, feed_dict)
-                        val_me.append(me)
-                    val_me = np.mean(val_me)
+                    val_me = self.test(dataset, mode='val', target='metric', batch_size=kwarg['batch_size'])
                     print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(val_me,4))
 
                     # save model
@@ -466,19 +519,8 @@ class TFModel():
                             break
             
             # Final Test
-            self.saver.restore(self.sess, save_path='model/'+kwarg['model_name']+version+'/model')
-            test_me = []
-            for _ in range(dataset.te_batch_num):
-                batch = dataset.te_get_batch(kwarg['batch_size'])
-                if type(self.input) is list:
-                    feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                    feed_dict.update({self.learning_rate: 0.0, self.training: False})
-                else:
-                    feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
-                # ls = self.sess.run(self.loss, feed_dict)
-                me = self._zip_run(self.metric, feed_dict)
-                test_me.append(me)
-            test_me = np.mean(test_me)
+            self.load('model/'+kwarg['model_name']+version+'/model')
+            test_me = self.test(dataset, mode='te', target='metric', batch_size=kwarg['batch_size'])
 
             repeat_metric_set.append(test_me)
             repeat_name_set.append(kwarg['model_name']+version)
@@ -492,7 +534,7 @@ class TFModel():
             if performance_recorder < kwarg['baseline']:
                 print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
 
-            # Here ends a pereat.
+            # Here ends a repeat.
         
         # Compute repeat summary
         if kwarg['repeat'] > 1:
@@ -510,4 +552,4 @@ class TFModel():
                 print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
 
         print('Done.')            
-        pass
+        return repeat_metric_set, repeat_name_set
