@@ -362,7 +362,7 @@ class TFModel():
         if 'mode' not in kwarg.keys():
             kwarg['mode'] = 'te'
         if 'target' not in kwarg.keys():
-            kwarg['mode'] = 'metric'
+            kwarg['target'] = 'metric'
         if 'batch_size' not in kwarg.keys():
             kwarg['batch_size'] = 1
         
