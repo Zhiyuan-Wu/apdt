@@ -248,7 +248,7 @@ class TFModel():
             self.pred = self.metric
         
         # Start Engine
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=None)
         self.sess = tf.Session()
         if 'seed' in kwarg.keys():
             np.random.seed(kwarg['seed'])
