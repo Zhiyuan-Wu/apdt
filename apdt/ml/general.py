@@ -35,6 +35,7 @@ class DataSet():
                 - split_ratio=0.7: the ratio of training set. Example: when split_ratio=0.7, training set will take first 70% data, validation set and testing set will be identical and take last 30%. when split_ration=(0.5, 0.25, 0.25), training set will take first 50% data, validation set will take middle 25% data, and testing set take last 25% data.
                 - seq_len=100: the window length;
                 - strides=seq_len-1: the sliding step;
+                - sub_sample=1: the sub_sample rate. The data time span should be at least seq_len*sub_sample (instead of (seq_len-1)*sub_sample+1) to ensure one sample
                 - normalize=True: if we do 0-1 normalize, Warning: dataset should always be properly normalized, and this operation is a in-place operation.
                 - feature=['data0', 'data1', ...]: the feature list to be used. default to all features avaliable.
 
@@ -111,21 +112,24 @@ class DataSet():
                 self.tr = self.data[:split_point_1]
                 self.val = self.data[split_point_1:split_point_2]
                 self.te = self.data[split_point_2:]
-            self.tr_batch_num = (self.tr.shape[0]-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])
-            self.val_batch_num = (self.val.shape[0]-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])
-            self.te_batch_num = (self.te.shape[0]-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])
+            self.tr_batch_num = (self.tr.shape[0]//kwarg['sub_sample']-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])*kwarg['sub_sample']
+            self.val_batch_num = (self.val.shape[0]//kwarg['sub_sample']-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])*kwarg['sub_sample']
+            self.te_batch_num = (self.te.shape[0]//kwarg['sub_sample']-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])*kwarg['sub_sample']
             if self.tr_batch_num == 0 or self.val_batch_num == 0 or self.te_batch_num == 0:
                 raise Exception("time_length is not enough to construct a window.")
             
             self.tr_list = []
             self.val_list = []
             self.te_list = []
-            for i in range(self.tr_batch_num):
-                self.tr_list.append(self.tr[i*(kwarg['strides']):i*(kwarg['strides'])+kwarg['seq_len']])
-            for i in range(self.val_batch_num):
-                self.val_list.append(self.val[i*(kwarg['strides']):i*(kwarg['strides'])+kwarg['seq_len']])
-            for i in range(self.te_batch_num):
-                self.te_list.append(self.te[i*(kwarg['strides']):i*(kwarg['strides'])+kwarg['seq_len']])
+            for i in range(self.tr_batch_num//kwarg['sub_sample']):
+                for j in range(kwarg['sub_sample']):
+                    self.tr_list.append(self.tr[i*(kwarg['strides']*kwarg['sub_sample'])+j:i*(kwarg['strides']*kwarg['sub_sample'])+kwarg['seq_len']*kwarg['sub_sample']:kwarg['sub_sample']])
+            for i in range(self.val_batch_num//kwarg['sub_sample']):
+                for j in range(kwarg['sub_sample']):
+                    self.val_list.append(self.val[i*(kwarg['strides']*kwarg['sub_sample'])+j:i*(kwarg['strides']*kwarg['sub_sample'])+kwarg['seq_len']*kwarg['sub_sample']:kwarg['sub_sample']])
+            for i in range(self.te_batch_num//kwarg['sub_sample']):
+                for j in range(kwarg['sub_sample']):
+                    self.te_list.append(self.te[i*(kwarg['strides']*kwarg['sub_sample'])+j:i*(kwarg['strides']*kwarg['sub_sample'])+kwarg['seq_len']*kwarg['sub_sample']:kwarg['sub_sample']])
             self.tr = np.array(self.tr_list)
             self.val = np.array(self.val_list)
             self.te = np.array(self.te_list)
