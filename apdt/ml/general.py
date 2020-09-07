@@ -79,12 +79,12 @@ class DataSet():
             
             if 'split_ratio' not in kwarg.keys():
                 kwarg['split_ratio'] = 0.7
-            if 'shuffle' not in kwarg.keys():
-                kwarg['shuffle'] = True
+            if 'sub_sample' not in kwarg.keys():
+                kwarg['sub_sample'] = 1
             if 'seq_len' not in kwarg.keys():
                 kwarg['seq_len'] = 100
             if 'strides' not in kwarg.keys():
-                kwarg['strides'] = kwarg['seq_len'] - 1
+                kwarg['strides'] = kwarg['seq_len']
             if 'normalize' not in kwarg.keys():
                 kwarg['normalize'] = True
             if 'normalize_method' not in kwarg.keys():
@@ -111,9 +111,9 @@ class DataSet():
                 self.tr = self.data[:split_point_1]
                 self.val = self.data[split_point_1:split_point_2]
                 self.te = self.data[split_point_2:]
-            self.tr_batch_num = (self.tr.shape[0]-kwarg['seq_len']+1+kwarg['strides'])//(kwarg['strides']+1)
-            self.val_batch_num = (self.val.shape[0]-kwarg['seq_len']+1+kwarg['strides'])//(kwarg['strides']+1)
-            self.te_batch_num = (self.te.shape[0]-kwarg['seq_len']+1+kwarg['strides'])//(kwarg['strides']+1)
+            self.tr_batch_num = (self.tr.shape[0]-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])
+            self.val_batch_num = (self.val.shape[0]-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])
+            self.te_batch_num = (self.te.shape[0]-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])
             if self.tr_batch_num == 0 or self.val_batch_num == 0 or self.te_batch_num == 0:
                 raise Exception("time_length is not enough to construct a window.")
             
@@ -121,11 +121,11 @@ class DataSet():
             self.val_list = []
             self.te_list = []
             for i in range(self.tr_batch_num):
-                self.tr_list.append(self.tr[i*(kwarg['strides']+1):i*(kwarg['strides']+1)+kwarg['seq_len']])
+                self.tr_list.append(self.tr[i*(kwarg['strides']):i*(kwarg['strides'])+kwarg['seq_len']])
             for i in range(self.val_batch_num):
-                self.val_list.append(self.val[i*(kwarg['strides']+1):i*(kwarg['strides']+1)+kwarg['seq_len']])
+                self.val_list.append(self.val[i*(kwarg['strides']):i*(kwarg['strides'])+kwarg['seq_len']])
             for i in range(self.te_batch_num):
-                self.te_list.append(self.te[i*(kwarg['strides']+1):i*(kwarg['strides']+1)+kwarg['seq_len']])
+                self.te_list.append(self.te[i*(kwarg['strides']):i*(kwarg['strides'])+kwarg['seq_len']])
             self.tr = np.array(self.tr_list)
             self.val = np.array(self.val_list)
             self.te = np.array(self.te_list)
