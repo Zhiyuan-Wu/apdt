@@ -489,7 +489,11 @@ class TFModel():
                         feed_dict.update({self.learning_rate: lr, self.training: True})
                     else:
                         feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
-                    _, ls, me = self.sess.run([self.train_op, self.loss, self.metric], feed_dict)
+                    # _, ls, me = self.sess.run([self.train_op, self.loss, self.metric], feed_dict)
+                    _re = self._zip_run([self.train_op, self.loss, self.metric], feed_dict)
+                    _re = np.array(_re).transpose()
+                    ls = np.mean(_re[1])
+                    me = np.mean(_re[2])
                     train_ls.append(ls)
                     train_me.append(me)
                 
