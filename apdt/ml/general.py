@@ -230,6 +230,7 @@ class TFModel():
             - lr_annealing_step_divisor=2.0. float. Avaliable when lr_annealing is set to 'step', we will apply lr=lr/lr_annealing_step_divisor to slow down the training process.
             - early_stop=None. int. Stop training if there is no better validation result since last recorder. This parameter decides the waiting epoch number. If None this feature will be disabled.
             - repeat=1. int. If set >1, we will randomly reset parameters and retrain the model for certain times, and compute statistical performance.
+            - verbose=0. int. The verbose level. 0-print all. 1-only summary. 2-mute.
     '''
     def __init__(self, **kwarg):
         # Initial tensor
@@ -450,6 +451,9 @@ class TFModel():
             kwarg['early_stop'] = None
         if 'repeat' not in kwarg.keys():
             kwarg['repeat'] = 1
+        if 'verbose' not in kwarg.keys():
+            kwarg['verbose'] = 0
+
 
         repeat_name_set = []
         repeat_metric_set = []
@@ -475,7 +479,8 @@ class TFModel():
                 np.random.seed(_repeat)
                 tf.set_random_seed(_repeat)
                 self.sess.run(tf.global_variables_initializer())
-                print('Repeat ', _repeat, 'Start.')
+                if kwarg['verbose'] < 1:
+                    print('Repeat ', _repeat, 'Start.')
 
             # Start training
             for epoch in range(kwarg['epoch']):
@@ -498,7 +503,7 @@ class TFModel():
                     train_me.append(me)
                 
                 # print log
-                if (epoch+1)%kwarg['print_every_n_epochs'] == 0:
+                if (epoch+1)%kwarg['print_every_n_epochs'] == 0 and kwarg['verbose'] < 1:
                     train_ls = np.mean(train_ls)
                     train_me = np.mean(train_me)
                     if kwarg['print_type']=='metric':
@@ -512,7 +517,8 @@ class TFModel():
                 if kwarg['lr_annealing']=='step':
                     if (epoch+1)%kwarg['lr_annealing_step_length'] == 0:
                             lr = lr/kwarg['lr_annealing_step_divisor']
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
+                            if kwarg['verbose'] < 1:
+                                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
                 elif kwarg['lr_annealing']=='cosine':
                     lr = float(kwarg['lr'])*(np.cos(epoch/kwarg['epoch']*np.pi)+1.0)/2
 
@@ -520,7 +526,8 @@ class TFModel():
                 if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
                     # validate
                     val_me = self.test(dataset, mode='val', target='metric', batch_size=kwarg['batch_size'])
-                    print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(val_me,4))
+                    if kwarg['verbose'] < 1:
+                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(val_me,4))
 
                     # save model
                     target = val_me
@@ -528,13 +535,14 @@ class TFModel():
                         performance_recorder = target
                         epoch_recorder = epoch
                         self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
-                        if target < kwarg['baseline']:
+                        if target < kwarg['baseline'] and kwarg['verbose'] < 1:
                             print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
 
                     # Early stop
                     if kwarg['early_stop']:
                         if epoch >= epoch_recorder + kwarg['early_stop']:
-                            print('Early stop.')
+                            if kwarg['verbose'] < 1:
+                                print('Early stop.')
                             break
             
             # Final Test
@@ -544,14 +552,15 @@ class TFModel():
             repeat_metric_set.append(test_me)
             repeat_name_set.append(kwarg['model_name']+version)
             repeat_time_set.append(time.time()-start_time)
-            print('=======Training Summary=======')
-            print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(time.time()-start_time)))
-            if performance_recorder < 1e10:
-                print('Best model at epoch ', epoch_recorder, ', with:')
-                print('Validation metric ', performance_recorder)
-                print('Test metric ', test_me)
-            if performance_recorder < kwarg['baseline']:
-                print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
+            if kwarg['verbose'] < 2:
+                print('=======Training Summary=======')
+                print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(time.time()-start_time)))
+                if performance_recorder < 1e10:
+                    print('Best model at epoch ', epoch_recorder, ', with:')
+                    print('Validation metric ', performance_recorder)
+                    print('Test metric ', test_me)
+                if performance_recorder < kwarg['baseline']:
+                    print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
 
             # Here ends a repeat.
         
@@ -560,15 +569,16 @@ class TFModel():
             test_ls_mean = np.mean(repeat_metric_set)
             test_ls_std = np.std(repeat_metric_set)
             total_time = np.sum(repeat_time_set)
-            print('=======Repeat Summary=======')
-            print('Repeat: ', kwarg['repeat'])
-            print('Model list: ', repeat_name_set)
-            print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(total_time)))
-            print('Test loss: ', repeat_metric_set)
-            print('Average loss: ', test_ls_mean)
-            print('95 confidence interval: ', test_ls_std*1.96, '(',test_ls_mean-test_ls_std*1.96,'~',test_ls_mean+test_ls_std*1.96,')')
-            if performance_recorder < kwarg['baseline']:
-                print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
+            if kwarg['verbose'] < 2:
+                print('=======Repeat Summary=======')
+                print('Repeat: ', kwarg['repeat'])
+                print('Model list: ', repeat_name_set)
+                print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(total_time)))
+                print('Test loss: ', repeat_metric_set)
+                print('Average loss: ', test_ls_mean)
+                print('95 confidence interval: ', test_ls_std*1.96, '(',test_ls_mean-test_ls_std*1.96,'~',test_ls_mean+test_ls_std*1.96,')')
 
-        print('Done.')            
+        if kwarg['verbose'] < 1:
+            print('Done.')            
+        
         return repeat_metric_set, repeat_name_set
