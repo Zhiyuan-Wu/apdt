@@ -201,6 +201,7 @@ class TFModel():
             - self.loss, self.loss should be a tensor of single float value, which will be minimized by optimizer;
             - self.pred. self.pred should be a tensor or a list of such, which will be the output to be evaluated given some input.
             - self.learning_rate (optional), self.learning_rate should be a placeholder tensor of single float value, which will control the gradient scale;
+            - self.pretrain_var_set (optional), self.pretrain_var_set is only needed when pre-train model is given. It should be a set of variables which need pre-train values instead of random initialization. default to the list of all variables in the model.
 
         - fit(dataset): fit the model using given DataSet object. Note that please make sure the dataset structure is compatible with model's input interface.
 
@@ -215,8 +216,12 @@ class TFModel():
                 A L2-Regularization will apllied with weight decay parameter as l2_norm, It will be disabled when given None.
             - clip_gvs, bool, default True.
                 all gradients in network will be cliiped to [-1,1] when set True.
-            - seed, int
+            - seed, int, default to currrent time.
                 The random seed to be set in Numpy and Tensorflow.
+            - pretrain_model, str, default None.
+                The pretrain model path.
+            - pretrain_var_map, dict, default {v.op.name: v for v in tf.model_variables()}
+                The map between model variables to its name in pretrain model. By default use its op-name.
         
         - model.fit():
             - model_name='NewModel', str.
@@ -233,6 +238,13 @@ class TFModel():
             - verbose=0. int. The verbose level. 0-print all. 1-only summary. 2-mute.
     '''
     def __init__(self, **kwarg):
+        # Parameter Check
+        if 'seed' not in kwarg.keys():
+            kwarg['seed'] = None
+        if 'pretrain_model' not in kwarg.keys():
+            kwarg['pretrain_model'] = None
+        self.kwarg = kwarg
+        
         # Initial tensor
         self.training = tf.placeholder(tf.bool)
         self.learning_rate = tf.placeholder(tf.float32)
@@ -240,6 +252,7 @@ class TFModel():
         self.pred = None
         self.loss = None
         self.metric = None
+        self.pretrain_var_set = None
 
         # Define Model
         self.def_model(**kwarg)
@@ -254,11 +267,27 @@ class TFModel():
         
         # Start Engine
         self.saver = tf.train.Saver(max_to_keep=None)
+        if kwarg['pretrain_model'] is not None:
+            if self.pretrain_var_set is None:
+                self.pretrain_var_set = tf.trainable_variables()
+            if 'pretrain_var_map' not in kwarg.keys():
+                kwarg['pretrain_var_map'] = {v.op.name: v for v in self.pretrain_var_set}
+            self._pre_saver = tf.train.Saver(var_list=kwarg['pretrain_var_map'], max_to_keep=None)
         self.sess = tf.Session()
-        if 'seed' in kwarg.keys():
-            np.random.seed(kwarg['seed'])
-            tf.set_random_seed(kwarg['seed'])
+        self.init_parameter()
+
+    def init_parameter(self, seed=None):
+        # Parameter Initialize
+        if seed is None:
+            if self.kwarg['seed'] is not None:
+                seed = self.kwarg['seed']
+            else:
+                seed = time.time()
+        np.random.seed(seed)
+        tf.set_random_seed(seed)
         self.sess.run(tf.global_variables_initializer())
+        if self.kwarg['pretrain_model'] is not None:
+            self._pre_saver.restore(self.sess, save_path=self.kwarg['pretrain_model'])
 
     def def_model(self, **kwarg):
         pass
@@ -476,9 +505,7 @@ class TFModel():
 
             # Reset parameters for repeat
             if kwarg['repeat'] > 1:
-                np.random.seed(_repeat)
-                tf.set_random_seed(_repeat)
-                self.sess.run(tf.global_variables_initializer())
+                self.init_parameter(seed=_repeat)
                 if kwarg['verbose'] < 1:
                     print('Repeat ', _repeat, 'Start.')
 
