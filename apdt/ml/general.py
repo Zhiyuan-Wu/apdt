@@ -282,7 +282,7 @@ class TFModel():
             if self.kwarg['seed'] is not None:
                 seed = self.kwarg['seed']
             else:
-                seed = time.time()
+                seed = int(time.time())
         np.random.seed(seed)
         tf.set_random_seed(seed)
         self.sess.run(tf.global_variables_initializer())
