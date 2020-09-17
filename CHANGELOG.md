@@ -1,7 +1,5 @@
 # Change Log
 
-
-
 ## V0.1
 
 - 重新初始化apdt包，设alz, io, ml, plt, proc, general六个子模块；
@@ -35,3 +33,7 @@
 - TFModel支持自动重复训练，计算置信区间
 - TFModel支持自定义不同的优化目标和评价指标
 - alz增加mcl算法，一种简易的无监督图聚类算法
+
+#### V0.1.5
+- TFModel支持预训练参数自动载入
+- TFModel预训练参数支持从多个模型分别载入
