@@ -489,6 +489,8 @@ class TFModel():
             kwarg['repeat'] = 1
         if 'verbose' not in kwarg.keys():
             kwarg['verbose'] = 0
+        if 'validate_on' not in kwarg.keys():
+            kwarg['validate_on'] = 'val'
 
 
         repeat_name_set = []
@@ -559,7 +561,7 @@ class TFModel():
                 # validate
                 if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
                     # validate
-                    val_me = self.test(dataset, mode='val', target='metric', batch_size=kwarg['batch_size'])
+                    val_me = self.test(dataset, mode=kwarg['validate_on'], target='metric', batch_size=kwarg['batch_size'])
                     if kwarg['verbose'] < 1:
                         print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(val_me,4))
 

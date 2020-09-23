@@ -377,6 +377,9 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
         weights = wavenet_weight(name=name, res_channel=kwarg['res_channel'], skip_channel=kwarg['skip_channel'],
             input_dim=kwarg['input_dim'], DilatedConvLayers=kwarg['DilatedConvLayers'], n_hidden=kwarg['n_hidden'],
             kernel_width=kwarg['dilated'],output_channel=2**kwarg['bits'])
+    else:
+        # Code to auto decision of parameters like kwarg['DilatedConvLayers']
+        ...
 
     def SingleChannelNetwork(x,channel,bits,encoder,decoder,name='Channel'):
         with tf.variable_scope(name):
