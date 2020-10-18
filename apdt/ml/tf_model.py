@@ -477,6 +477,8 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
         kwarg['n_hidden'] = 128
     if 'dilated' not in kwarg.keys():
         kwarg['dilated'] = 3
+    if 'kernel_width' not in kwarg.keys():
+        kwarg['kernel_width'] = 3
     if 'loss' not in kwarg.keys():
         kwarg['loss'] = 'MAE'
     if 'bits' not in kwarg.keys():
@@ -491,7 +493,7 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
     if weights is None:
         weights = wavenet_weight(name=name, res_channel=kwarg['res_channel'], skip_channel=kwarg['skip_channel'],
             input_dim=kwarg['input_dim'], DilatedConvLayers=kwarg['DilatedConvLayers'], n_hidden=kwarg['n_hidden'],
-            kernel_width=kwarg['dilated'],output_channel=2**kwarg['bits'])
+            kernel_width=kwarg['kernel_width'],output_channel=2**kwarg['bits'])
     else:
         # Code to auto decision of parameters like kwarg['DilatedConvLayers']
         ...
@@ -504,7 +506,7 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
             w = weights['1_by_1_x']
             x = tf.nn.conv1d(x, w, 1, 'SAME')
             for i in range(kwarg['DilatedConvLayers']):
-                _x = tf.pad(x,[[0,0],[kwarg['dilated']**i * (kwarg['dilated'] - 1),0],[0,0]])
+                _x = tf.pad(x,[[0,0],[kwarg['dilated']**i * (kwarg['kernel_width'] - 1),0],[0,0]])
                 w = weights['kernel_l'+str(i)]
                 h = tf.nn.conv2d(tf.expand_dims(_x,1), tf.expand_dims(w,0), [1,1,1,1], 'VALID', dilations=[1,1,kwarg['dilated']**i,1])
                 if kwarg['batch_norm']:
