@@ -306,7 +306,7 @@ class TFModel():
         if 'keep_norm_loss' not in kwarg.keys():
             kwarg['keep_norm_loss'] = True
         if 'clip_gvs' not in kwarg.keys():
-            kwarg['clip_gvs'] = True
+            kwarg['clip_gvs'] = False
 
         # Set up optimizer
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
