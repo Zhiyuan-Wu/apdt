@@ -93,6 +93,20 @@ class DataPack():
         '''Append rows into datapack. This fuction is usually used as virtual-sampling.
         '''
         pass
+
+    def drop_site(self, site_id):
+        '''Drop rows at given site.
+        '''
+        if type(site_id) is str:
+            site_id = [site_id]
+
+        for x in site_id:
+            self.data = self.data.reset_index()
+            remove_idx = self.data.index[self.data.site_id==x]
+            self.data.drop(index=remove_idx, inplace=True)
+            self.data = self.data.set_index('datetime')
+            remove_idx = self.site_info.index[self.site_info.site_id==x]
+            self.site_info.drop(index=remove_idx, inplace=True)
     
     def __str__(self):
         return self.data.__str__()
