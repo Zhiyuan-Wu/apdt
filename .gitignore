@@ -11,3 +11,4 @@ t.py
 build
 dist
 *.sh
+ERROR_LOG_FILE
