@@ -115,7 +115,7 @@ class DataSet():
             self.tr_batch_num = (self.tr.shape[0]//kwarg['sub_sample']-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])*kwarg['sub_sample']
             self.val_batch_num = (self.val.shape[0]//kwarg['sub_sample']-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])*kwarg['sub_sample']
             self.te_batch_num = (self.te.shape[0]//kwarg['sub_sample']-kwarg['seq_len']+kwarg['strides'])//(kwarg['strides'])*kwarg['sub_sample']
-            if self.tr_batch_num == 0 or self.val_batch_num == 0 or self.te_batch_num == 0:
+            if self.tr_batch_num <= 0 or self.val_batch_num <= 0 or self.te_batch_num <= 0:
                 raise Exception("time_length is not enough to construct a window.")
             
             self.tr_list = []
@@ -491,6 +491,8 @@ class TFModel():
             kwarg['verbose'] = 0
         if 'validate_on' not in kwarg.keys():
             kwarg['validate_on'] = 'val'
+        if 'higher_better' not in kwarg.keys():
+            kwarg['higher_better'] = False
 
 
         repeat_name_set = []
@@ -508,7 +510,10 @@ class TFModel():
                 except FileExistsError:
                     time.sleep(1)           
             lr = float(kwarg['lr'])
-            performance_recorder = 1e10
+            if kwarg['higher_better']:
+                performance_recorder = -1e10
+            else:
+                performance_recorder = 1e10
             epoch_recorder = 1e10
             start_time = time.time()
 
@@ -567,7 +572,7 @@ class TFModel():
 
                     # save model
                     target = val_me
-                    if target < performance_recorder:
+                    if (target < performance_recorder) ^ kwarg['higher_better']:
                         performance_recorder = target
                         epoch_recorder = epoch
                         self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')

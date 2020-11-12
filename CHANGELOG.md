@@ -37,3 +37,8 @@
 #### V0.1.5
 - TFModel支持预训练参数自动载入
 - TFModel预训练参数支持从多个模型分别载入
+
+#### V0.1.6
+- 增加 io.DarkSkyAPI
+- ml.TFModel 中 clip_grad 默认改为 False
+- ml.TFModel.fit 增加 higher_better 参数
