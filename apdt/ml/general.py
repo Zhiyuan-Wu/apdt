@@ -32,7 +32,7 @@ class DataSet():
             Avaliable:
             - 'window': use a sliding window across time-axis to generate samples. locations in a time slice are supposed to be same (i.e. fixed-station). a samlple will be a N*T*D array. where N is the number of locations, T is window length and D is feature dimensions.
                 argument for 'window':
-                - split_ratio=0.7: the ratio of training set. Example: when split_ratio=0.7, training set will take first 70% data, validation set and testing set will be identical and take last 30%. when split_ration=(0.5, 0.25, 0.25), training set will take first 50% data, validation set will take middle 25% data, and testing set take last 25% data.
+                - split_ratio=0.7: the ratio of training set. Example: when split_ratio=0.7, training set will take first 70% data, validation set and testing set will be identical and take last 30%. when split_ration=(0.5, 0.25, 0.25), training set will take first 50% data, validation set will take middle 25% data, and testing set take last 25% data. When given None, there's no splition, training/validation/testing will use same entire dataset.
                 - seq_len=100: the window length;
                 - strides=seq_len-1: the sliding step;
                 - sub_sample=1: the sub_sample rate. The data time span should be at least seq_len*sub_sample (instead of (seq_len-1)*sub_sample+1) to ensure one sample
@@ -101,7 +101,11 @@ class DataSet():
                 datapack = apdt.proc.linear_normalize(datapack, kwarg['feature'], kwarg['normalize_method'])
             self.data = datapack.data.reset_index().sort_values(['datetime', 'site_id'])[kwarg['feature']].values.reshape((T, N, D))
 
-            if type(kwarg['split_ratio']) is float:
+            if kwarg['split_ratio'] is None:
+                self.tr = self.data
+                self.val = self.data
+                self.te = self.data
+            elif type(kwarg['split_ratio']) is float:
                 split_point = int(T * kwarg['split_ratio'])
                 self.tr = self.data[:split_point]
                 self.val = self.data[split_point:]
