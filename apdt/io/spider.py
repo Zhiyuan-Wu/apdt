@@ -67,8 +67,9 @@ class DarkSkyAPI():
                 time_now += 3600*24
         return req_pool
 
-    def run(self, flag=False, shift=0):
-        print('This task need ', self.est_days, ' days using ', self.account_num, ' accounts.')
+    def run(self, flag=False, shift=0, wait_hour=24):
+        est_days = (self.entry_num - shift) // sum(self.quota) + 1
+        print('This task include', self.entry_num - shift, ' entries and need ', est_days, ' days using ', self.account_num, ' accounts.')
         if flag:
             key = 0
             key_count = 0
@@ -84,9 +85,9 @@ class DarkSkyAPI():
                     key = key + 1
                     if key >= self.account_num:
                         key = 0
-                        print('Waiting 24 hours...')
+                        print('Waiting', wait_hour,' hours...')
                         print('Current shift:', i)
-                        time.sleep(24*3600)
+                        time.sleep(wait_hour*3600)
                 req = self.req_pool[i]
                 url = req[0] + self.secret_key_list[key] + req[1]
                 file = req[2]
@@ -102,3 +103,51 @@ class DarkSkyAPI():
                 key_count = key_count + 1
         else:
             print('Use DarkSkyAPI.run(flag = True) to confirm and run task.')
+
+    def retry_error(self, flag=False, shift=0, wait_hour=24):
+        with open('ERROR_LOG_FILE', 'r') as ERROR_LOG_file:
+            lines = [x.replace('\n','') for x in ERROR_LOG_file.readlines()]
+            req_pool = [['https://api.darksky.net/forecast/', lines[2*i].rsplit('/',2)[-1], lines[2*i+1]] for i in range(len(lines)//2)]
+
+        with open('ERROR_LOG_FILE_BCK', 'w') as ERROR_LOG_file:
+            for line in lines:
+                ERROR_LOG_file.write(line+'\n')
+        with open('ERROR_LOG_FILE', 'w') as ERROR_LOG_file:
+            ...
+        
+        entry_num = len(req_pool)
+        est_days = (entry_num - shift) // sum(self.quota) + 1
+        print('This task include', entry_num - shift, ' entries and need ', est_days, ' days using ', self.account_num, ' accounts.')
+        
+        if flag:
+            key = 0
+            key_count = 0
+            for s in self.sites:
+                if not os.path.exists(self.save_path + s + '/'):
+                    os.mkdir(self.save_path + s + '/')
+            for i in range(shift, entry_num):
+                if (i+1)%500 == 0:
+                    print(i+1, '/', entry_num, '...')
+                if key_count >= self.quota[key]:
+                    key_count = 0
+                    key = key + 1
+                    if key >= self.account_num:
+                        key = 0
+                        print('Waiting', wait_hour,' hours...')
+                        print('Current shift:', i)
+                        time.sleep(wait_hour*3600)
+                req = req_pool[i]
+                url = req[0] + self.secret_key_list[key] + '/' + req[1]
+                file = req[2]
+                try:
+                    r = requests.get(url)
+                    with open(file, 'w') as result_file:
+                        result_file.write(r.text)
+                except:
+                    print('Error: ', file)
+                    with open('ERROR_LOG_FILE', 'a') as ERROR_LOG_file:
+                        ERROR_LOG_file.write(url+'\n')
+                        ERROR_LOG_file.write(file+'\n')
+                key_count = key_count + 1
+        else:
+            print('Use DarkSkyAPI.retry_error(flag = True) to confirm and run task.')
