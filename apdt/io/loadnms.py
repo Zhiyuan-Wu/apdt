@@ -7,7 +7,7 @@ import json
 
 from apdt.config import _config
 
-def load_nms(site, start_date, end_date=None, gas='pm2d5'):
+def load_nms(site, start_date, end_date=None, gas='pm2d5', par=True):
     '''Load national monitoring stations (NMS) data.
     Parameters
     ----------
@@ -19,6 +19,8 @@ def load_nms(site, start_date, end_date=None, gas='pm2d5'):
             The end time (include) like "2018-12-31"
         gas: string or list, default: 'pm2d5'
             The gas type to be collected.
+        par: bool, default True
+            If use parallel process.
     Return
     ------
         DataPack
@@ -70,15 +72,18 @@ def load_nms(site, start_date, end_date=None, gas='pm2d5'):
                 pass
             time_now += 24*3600
         return data_list
-    workers = []
-    data_list = []
-    time_list = [start_time] + [int((end_time-start_time)/3600/24/worker_num)*k*24*3600+start_time for k in range(1,worker_num)] + [end_time+1]
-    for i in range(worker_num):
-        workers.append(SubThread(worker,(time_list[i],time_list[i+1])))
-        workers[-1].start()
-    for i in range(worker_num):
-        workers[i].join()
-        data_list = data_list+workers[i].get_result()
+    if par:
+        workers = []
+        data_list = []
+        time_list = [start_time] + [int((end_time-start_time)/3600/24/worker_num)*k*24*3600+start_time for k in range(1,worker_num)] + [end_time+1]
+        for i in range(worker_num):
+            workers.append(SubThread(worker,(time_list[i],time_list[i+1])))
+            workers[-1].start()
+        for i in range(worker_num):
+            workers[i].join()
+            data_list = data_list+workers[i].get_result()
+    else:
+        data_list = worker(start_time, end_time)
     data_list = pd.concat(data_list)
     data_list = data_list.reset_index().merge(location, on='site_id', how='left').set_index('datetime')
     data_list = data_list.dropna(subset=['lat', 'lon'])
@@ -123,6 +128,8 @@ def load_weather(site, start_date, end_date=None, feature='temperature', **kwarg
 
     if 'enable_warning' not in kwarg.keys():
         kwarg['enable_warning'] = True
+    if 'warning_threshold' not in kwarg.keys():
+        kwarg['warning_threshold'] = 0.2
 
     data_path = _config['nms_data_path']
     location = pd.read_csv(data_path+'site_location.csv')
@@ -186,12 +193,15 @@ def load_weather(site, start_date, end_date=None, feature='temperature', **kwarg
         # Linear interploation
         Length = int((end_time-start_time)//3600 + 24)
         data_ratio = np.array([len(data_list[m]) for m in range(len(feature))])/Length
-        if np.any(data_ratio < 0.2) and kwarg['enable_warning']:
+        if np.any(data_ratio < kwarg['warning_threshold']) and kwarg['enable_warning']:
             print(__file__+' Runtime Warning: ')
-            print('Too much missing value in site ' + site_id + ' Weather Data, the returned interpolated data may be not meaningful.')
+            print('Too much missing value in site ' + site_id + ' Weather Data, the returned interpolated data may be not meaningful: ', data_ratio)
         data_interp = []
         for i in range(len(feature)):
-            data_interp.append(np.interp(np.arange(Length), time_stamp[i], data_list[i]))
+            if len(data_list[i]) > 0:
+                data_interp.append(np.interp(np.arange(Length), time_stamp[i], data_list[i]))
+            else:
+                data_interp.append(np.zeros(Length,))
         data = np.stack(data_interp,-1)
 
         data_table = pd.DataFrame(data=data,columns=['data'+str(i) for i in range(len(feature))])

@@ -20,6 +20,7 @@ def spatial_interplot(datapack, method='NN', columns='ALL', **kwarg):
         DataPack
     Note
     ----
+        WARNING: very slow for large scale data (> 2 days for ~3M records in our test)
         To be supported: 'Kriging'(Kriging interplotation).
         deal with data1, data2, ...
         To Do: Why multi-thread dont work on this function?
