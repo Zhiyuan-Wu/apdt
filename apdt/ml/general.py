@@ -454,6 +454,9 @@ class TFModel():
             kwarg['target'] = 'metric'
         if 'batch_size' not in kwarg.keys():
             kwarg['batch_size'] = 1
+        if kwarg['batch_size'] > min(dataset.tr_batch_num, dataset.val_batch_num, dataset.te_batch_num):
+            kwarg['batch_size'] = min(dataset.tr_batch_num, dataset.val_batch_num, dataset.te_batch_num)
+            print('WARNING: batch_size should be smaller than dataset size. Automatically set batch_size =', kwarg['batch_size'])
         
         if kwarg['mode'] in ['tr', 'train', 'training']:
             batch_num = dataset.tr_batch_num
@@ -475,7 +478,7 @@ class TFModel():
             raise Exception('Unsupport test target.')
         
         me_list = []
-        for _ in range(batch_num):
+        for _ in range(batch_num//kwarg['batch_size']):
             batch = get_batch(kwarg['batch_size'])
             if type(self.input) is list:
                 feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
@@ -519,6 +522,9 @@ class TFModel():
             kwarg['epoch'] = 100
         if 'batch_size' not in kwarg.keys():
             kwarg['batch_size'] = 1
+        if kwarg['batch_size'] > min(dataset.tr_batch_num, dataset.val_batch_num, dataset.te_batch_num):
+            kwarg['batch_size'] = min(dataset.tr_batch_num, dataset.val_batch_num, dataset.te_batch_num)
+            print('WARNING: batch_size should be smaller than dataset size. Automatically set batch_size =', kwarg['batch_size'])
         if 'print_type' not in kwarg.keys():
             kwarg['print_type'] = 'metric'
         if 'print_every_n_epochs' not in kwarg.keys():
@@ -576,7 +582,7 @@ class TFModel():
                 # update an epoch
                 train_ls = []
                 train_me = []
-                for _ in range(dataset.tr_batch_num):
+                for _ in range(dataset.tr_batch_num//kwarg['batch_size']):
                     batch = dataset.tr_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
                         feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
