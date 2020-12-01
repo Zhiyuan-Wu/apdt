@@ -42,3 +42,6 @@
 - 增加 io.DarkSkyAPI
 - ml.TFModel 中 clip_grad 默认改为 False
 - ml.TFModel.fit 增加 higher_better 参数
+- io.load_nms 增加关闭并行选项
+- ml.Dataset 支持有监督学习模式
+- ml.Dataset 支持直接读入MNIST

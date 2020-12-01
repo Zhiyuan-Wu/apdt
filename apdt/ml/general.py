@@ -41,10 +41,18 @@ class DataSet():
 
     '''
     def __init__(self, datapack, **kwarg):
+        if 'supervised' not in kwarg.keys():
+            kwarg['supervised'] = False
+
+        self.supervised = kwarg['supervised']
+
         if type(datapack) is apdt.DataPack:
             self.pre_process(datapack, **kwarg)
         elif type(datapack) is str:
-            self.load(datapack, **kwarg)
+            if datapack=='MNIST':
+                self.MNIST(**kwarg)
+            else:
+                self.load(datapack, **kwarg)
 
         self._init_counter(**kwarg)
 
@@ -162,8 +170,13 @@ class DataSet():
             self.tr_batch_counter = 0
         target_index = self.tr_batch_perm[self.tr_batch_counter: self.tr_batch_counter + batch_size]
         self.tr_batch_counter = self.tr_batch_counter + batch_size
-        batch = self.tr[target_index]
-        batch = self.post_process(batch, mode='train')
+        if self.supervised:
+            batchx = self.tr[target_index]
+            batchy = self.tr_y[target_index]
+            batch = self.post_process([batchx, batchy], mode='train')
+        else:
+            batch = self.tr[target_index]
+            batch = self.post_process(batch, mode='train')
         return batch
 
     def val_get_batch(self, batch_size=1):
@@ -174,8 +187,13 @@ class DataSet():
             self.val_batch_counter = 0
         target_index = self.val_batch_perm[self.val_batch_counter: self.val_batch_counter + batch_size]
         self.val_batch_counter = self.val_batch_counter + batch_size
-        batch = self.val[target_index]
-        batch = self.post_process(batch, mode='validate')
+        if self.supervised:
+            batchx = self.val[target_index]
+            batchy = self.val_y[target_index]
+            batch = self.post_process([batchx, batchy], mode='validate')
+        else:
+            batch = self.val[target_index]
+            batch = self.post_process(batch, mode='validate')
         return batch
     
     def te_get_batch(self, batch_size=1):
@@ -186,12 +204,38 @@ class DataSet():
             self.te_batch_counter = 0
         target_index = self.te_batch_perm[self.te_batch_counter: self.te_batch_counter + batch_size]
         self.te_batch_counter = self.te_batch_counter + batch_size
-        batch = self.te[target_index]
-        batch = self.post_process(batch, mode='test')
+        if self.supervised:
+            batchx = self.te[target_index]
+            batchy = self.te_y[target_index]
+            batch = self.post_process([batchx, batchy], mode='test')
+        else:
+            batch = self.te[target_index]
+            batch = self.post_process(batch, mode='test')
         return batch
 
     def post_process(self, batch, **kwarg):
         return batch
+
+    def MNIST(self, **kwarg):
+        '''self.tr, self.val and self.te, which have size N*D_1*D_2*...; The first dimension is considered as independent sample index; Beside this, three variables self.tr_batch_num, self.val_batch_num and self.te_batch_num which claims the coressponding sample number should also be defined.
+        '''
+        # Load data from keras interface
+        import tensorflow as tf
+        mnist = tf.keras.datasets.mnist
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+        x_train, x_test = x_train / 255.0, x_test / 255.0
+
+        # Construct dataset
+        self.supervised = True
+        self.tr = x_train
+        self.val = x_test
+        self.te = x_test
+        self.tr_y = y_train
+        self.val_y = y_test
+        self.te_y = y_test
+        self.tr_batch_num = self.tr.shape[0]
+        self.val_batch_num = self.val.shape[0]
+        self.te_batch_num = self.te.shape[0]
 
 class TFModel():
     '''Provide model constructure interface based on Tensorflow (1.x).
