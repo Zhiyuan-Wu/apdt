@@ -45,25 +45,28 @@ def Transformer_ar_decoder_weight(**kwarg):
         for i in range(kwarg['n_layers']):
             w['w_q_'+str(i)] = tf.get_variable('w_q_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-            w['b_q_'+str(i)] = tf.get_variable('b_q_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            w['b_q_'+str(i)] = tf.get_variable('b_q_'+str(i), [kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
             w['w_k_'+str(i)] = tf.get_variable('w_k_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-            w['b_k_'+str(i)] = tf.get_variable('b_k_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            w['b_k_'+str(i)] = tf.get_variable('b_k_'+str(i), [kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
             w['w_v_'+str(i)] = tf.get_variable('w_v_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-            w['b_v_'+str(i)] = tf.get_variable('b_v_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            w['b_v_'+str(i)] = tf.get_variable('b_v_'+str(i), [kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
             w['dense_w1_'+str(i)] = tf.get_variable('dense_w1_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-            w['dense_b1_'+str(i)] = tf.get_variable('dense_b1_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            w['dense_b1_'+str(i)] = tf.get_variable('dense_b1_'+str(i), [kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
             w['dense_w2_'+str(i)] = tf.get_variable('dense_w2_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-            w['dense_b2_'+str(i)] = tf.get_variable('dense_b2_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            w['dense_b2_'+str(i)] = tf.get_variable('dense_b2_'+str(i), [kwarg['n_hidden']], 
             initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
-
+        w['out_w'] = tf.get_variable('out_w', [1, kwarg['n_hidden'], kwarg['output_dim']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+        w['out_b'] = tf.get_variable('out_b', [kwarg['output_dim']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
     return w
 
 def scaled_dot_product_attention(Q, K, V, causality=False,
@@ -120,6 +123,7 @@ def positional_encoding(inputs,
 
     E = inputs.get_shape().as_list()[-1] # static
     N, T = tf.shape(inputs)[0], tf.shape(inputs)[1] # dynamic
+    maxlen = inputs.shape[1].value
     with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
         # position indices
         position_ind = tf.tile(tf.expand_dims(tf.range(T), 0), [N, 1]) # (N, T)
@@ -127,12 +131,12 @@ def positional_encoding(inputs,
         # First part of the PE function: sin and cos argument
         position_enc = np.array([
             [pos / np.power(10000, (i-i%2)/E) for i in range(E)]
-            for pos in range(T)])
+            for pos in range(maxlen)])
 
         # Second part, apply the cosine to even columns and sin to odds.
         position_enc[:, 0::2] = np.sin(position_enc[:, 0::2])  # dim 2i
         position_enc[:, 1::2] = np.cos(position_enc[:, 1::2])  # dim 2i+1
-        position_enc = tf.convert_to_tensor(position_enc, tf.float32) # (T, E)
+        position_enc = tf.convert_to_tensor(position_enc, tf.float32) # (maxlen, E)
 
         # lookup
         outputs = tf.nn.embedding_lookup(position_enc, position_ind)
@@ -168,9 +172,9 @@ def Transformer_ar_decoder(input, weights=None, name='Transformer_ar_decoder', *
                                     causality=True, num_head=kwarg['n_head'], name="multihead_attention"+str(i))
             x = tf.nn.conv1d(h, weights['dense_w1_'+str(i)], 1, 'SAME') + weights['dense_b1_'+str(i)]
             x = tf.nn.relu(x)
-            x = tf.nn.conv1d(input, weights['dense_w2_'+str(i)], 1, 'SAME') + weights['dense_b2_'+str(i)]
+            x = tf.nn.conv1d(x, weights['dense_w2_'+str(i)], 1, 'SAME') + weights['dense_b2_'+str(i)]
             x = x + h
-        o = tf.nn.conv1d(input, weights['out_w'], 1, 'SAME') + weights['out_b']
+        o = tf.nn.conv1d(x, weights['out_w'], 1, 'SAME') + weights['out_b']
     return o
 
 def lstm_weight(**kwarg):

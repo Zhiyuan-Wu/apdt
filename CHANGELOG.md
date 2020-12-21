@@ -45,3 +45,5 @@
 - io.load_nms 增加关闭并行选项
 - ml.Dataset 支持有监督学习模式
 - ml.Dataset 支持直接读入MNIST
+- ml.TFModel 增加 LSTM
+- ml.TFModel 增加 Transformer
