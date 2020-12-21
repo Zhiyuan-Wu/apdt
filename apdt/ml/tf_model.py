@@ -6,6 +6,173 @@ try:
 except:
     pass
 
+def Transformer_ar_decoder_weight(**kwarg):
+    '''Construct weight for Transformer.
+    Parameter
+    ---------
+        name: str
+            the variable name scope to be used.
+        input_dim: int, default 10
+            the number of input neurals
+        output_dim: int, default 10
+            the number of output neurals
+        n_hidden: list of int, default 128
+            the number of hidden units
+    Return
+    ------
+        dict
+            the dictionary of weight tensor.
+    '''
+    if 'name' not in kwarg:
+        kwarg['name'] = 'Transformer_ar_decoder_weight'
+    if 'input_dim' not in kwarg:
+        kwarg['input_dim'] = 10
+    if 'output_dim' not in kwarg:
+        kwarg['output_dim'] = 10
+    if 'n_hidden' not in kwarg:
+        kwarg['n_hidden'] = 128
+    if 'n_layers' not in kwarg:
+        kwarg['n_layers'] = 3
+    if 'trainable' not in kwarg:
+        kwarg['trainable'] = True
+
+    w = {}
+    with tf.variable_scope(kwarg['name']):
+        w['input_project_w'] = tf.get_variable('input_project_w', [1, kwarg['input_dim'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+        w['input_project_b'] = tf.get_variable('input_project_b', [kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+        for i in range(kwarg['n_layers']):
+            w['w_q_'+str(i)] = tf.get_variable('w_q_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['b_q_'+str(i)] = tf.get_variable('b_q_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['w_k_'+str(i)] = tf.get_variable('w_k_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['b_k_'+str(i)] = tf.get_variable('b_k_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['w_v_'+str(i)] = tf.get_variable('w_v_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['b_v_'+str(i)] = tf.get_variable('b_v_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['dense_w1_'+str(i)] = tf.get_variable('dense_w1_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['dense_b1_'+str(i)] = tf.get_variable('dense_b1_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['dense_w2_'+str(i)] = tf.get_variable('dense_w2_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+            w['dense_b2_'+str(i)] = tf.get_variable('dense_b2_'+str(i), [1, kwarg['n_hidden'], kwarg['n_hidden']], 
+            initializer=tf.contrib.layers.xavier_initializer(), trainable=kwarg['trainable'])
+
+    return w
+
+def scaled_dot_product_attention(Q, K, V, causality=False,
+                                 name="scaled_dot_product_attention"):
+    '''See 3.2.1.
+    Q: Packed queries. 3d tensor. [N, T_q, d_k].
+    K: Packed keys. 3d tensor. [N, T_k, d_k].
+    V: Packed values. 3d tensor. [N, T_k, d_v].
+    key_masks: A 2d tensor with shape of [N, key_seqlen]
+    causality: If True, applies masking for future blinding
+    dropout_rate: A floating point number of [0, 1].
+    training: boolean for controlling droput
+    scope: Optional scope for `variable_scope`.
+    '''
+    with tf.variable_scope(name):
+        outputs = tf.matmul(Q, tf.transpose(K, [0, 2, 1]))  # (N, T_q, T_k)
+        outputs /= (Q.shape[-1].value) ** 0.5
+        if causality:
+            diag_vals = tf.ones_like(outputs[0, :, :])
+            tril = tf.linalg.LinearOperatorLowerTriangular(diag_vals).to_dense()
+            outputs = outputs * tril - 1e10 * (1 - tril)
+        outputs = tf.nn.softmax(outputs)
+        outputs = tf.matmul(outputs, V)  # (N, T_q, d_v)
+    return outputs
+
+def multihead_attention(Q, K, V, w_q, w_k, w_v,
+                                 b_q, b_k, b_v,
+                                 causality=False,
+                                 num_head=1,
+                                 name="scaled_dot_product_attention"):
+    ...
+    with tf.variable_scope(name):
+        Q_ = tf.nn.conv1d(Q, w_q, 1, 'SAME') + b_q
+        K_ = tf.nn.conv1d(K, w_k, 1, 'SAME') + b_k
+        V_ = tf.nn.conv1d(V, w_v, 1, 'SAME') + b_v
+        Q_ = tf.concat(tf.split(Q_, num_head, axis=2), axis=0) # (h*N, T_q, d_model/h)
+        K_ = tf.concat(tf.split(K_, num_head, axis=2), axis=0) # (h*N, T_k, d_model/h)
+        V_ = tf.concat(tf.split(V_, num_head, axis=2), axis=0) # (h*N, T_k, d_model/h)
+        outputs = scaled_dot_product_attention(Q_, K_, V_, causality=causality) # (h*N, T_q, d_model/h)
+        outputs = tf.concat(tf.split(outputs, num_head, axis=0), axis=2) # (N, T_q, d_model)
+        outputs += Q
+    return outputs
+
+def positional_encoding(inputs,
+                        scope="positional_encoding"):
+    '''Sinusoidal Positional_Encoding. See 3.5
+    inputs: 3d tensor. (N, T, E)
+    maxlen: scalar. Must be >= T
+    masking: Boolean. If True, padding positions are set to zeros.
+    scope: Optional scope for `variable_scope`.
+    returns
+    3d tensor that has the same shape as inputs.
+    '''
+
+    E = inputs.get_shape().as_list()[-1] # static
+    N, T = tf.shape(inputs)[0], tf.shape(inputs)[1] # dynamic
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
+        # position indices
+        position_ind = tf.tile(tf.expand_dims(tf.range(T), 0), [N, 1]) # (N, T)
+
+        # First part of the PE function: sin and cos argument
+        position_enc = np.array([
+            [pos / np.power(10000, (i-i%2)/E) for i in range(E)]
+            for pos in range(T)])
+
+        # Second part, apply the cosine to even columns and sin to odds.
+        position_enc[:, 0::2] = np.sin(position_enc[:, 0::2])  # dim 2i
+        position_enc[:, 1::2] = np.cos(position_enc[:, 1::2])  # dim 2i+1
+        position_enc = tf.convert_to_tensor(position_enc, tf.float32) # (T, E)
+
+        # lookup
+        outputs = tf.nn.embedding_lookup(position_enc, position_ind)
+
+        return tf.to_float(outputs)
+
+def Transformer_ar_decoder(input, weights=None, name='Transformer_ar_decoder', **kwarg):
+    '''Apply Transformer on a single series auto-regressively.
+    ''' 
+
+    if 'n_hidden' not in kwarg:
+        kwarg['n_hidden'] = 128
+    if 'n_layers' not in kwarg:
+        kwarg['n_layers'] = 3
+    if 'n_head' not in kwarg:
+        kwarg['n_head'] = 4
+    if 'output_dim' not in kwarg:
+        kwarg['output_dim'] = 128
+    if 'positional_encoding' not in kwarg:
+        kwarg['positional_encoding'] = True
+
+    if weights is None:
+        weights = Transformer_ar_decoder_weight(name=name, input_dim=input.shape[2].value, n_hidden=kwarg['n_hidden'], n_layers=kwarg['n_layers'], output_dim=kwarg['output_dim'])
+
+    with tf.variable_scope(name):
+        if kwarg['positional_encoding']:
+            input = input + positional_encoding(input)
+        x = tf.nn.conv1d(input, weights['input_project_w'], 1, 'SAME') + weights['input_project_b']
+        for i in range(kwarg['n_layers']):
+            h = multihead_attention(x, x, x,
+                                    weights['w_q_'+str(i)], weights['w_k_'+str(i)], weights['w_v_'+str(i)],
+                                    weights['b_q_'+str(i)], weights['b_k_'+str(i)], weights['b_v_'+str(i)],
+                                    causality=True, num_head=kwarg['n_head'], name="multihead_attention"+str(i))
+            x = tf.nn.conv1d(h, weights['dense_w1_'+str(i)], 1, 'SAME') + weights['dense_b1_'+str(i)]
+            x = tf.nn.relu(x)
+            x = tf.nn.conv1d(input, weights['dense_w2_'+str(i)], 1, 'SAME') + weights['dense_b2_'+str(i)]
+            x = x + h
+        o = tf.nn.conv1d(input, weights['out_w'], 1, 'SAME') + weights['out_b']
+    return o
+
 def lstm_weight(**kwarg):
     '''Construct weight for LSTM.
     Parameter

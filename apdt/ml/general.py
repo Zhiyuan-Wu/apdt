@@ -217,13 +217,13 @@ class DataSet():
         return batch
 
     def MNIST(self, **kwarg):
-        '''self.tr, self.val and self.te, which have size N*D_1*D_2*...; The first dimension is considered as independent sample index; Beside this, three variables self.tr_batch_num, self.val_batch_num and self.te_batch_num which claims the coressponding sample number should also be defined.
-        '''
         # Load data from keras interface
         import tensorflow as tf
         mnist = tf.keras.datasets.mnist
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
         x_train, x_test = x_train / 255.0, x_test / 255.0
+        y_train = (np.outer(np.ones((y_train.shape[0],)), np.arange(10)) == y_train.reshape([-1, 1])) * 1.0
+        y_test = (np.outer(np.ones((y_test.shape[0],)), np.arange(10)) == y_test.reshape([-1, 1])) * 1.0
 
         # Construct dataset
         self.supervised = True
