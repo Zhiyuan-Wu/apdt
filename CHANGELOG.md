@@ -1,5 +1,37 @@
 # Change Log
 
+#### V0.1.7
+
+#### V0.1.6
+- 增加 io.DarkSkyAPI
+- ml.TFModel 中 clip_grad 默认改为 False
+- ml.TFModel.fit 增加 higher_better 参数
+- io.load_nms 增加关闭并行选项
+- ml.Dataset 支持有监督学习模式
+- ml.Dataset 支持直接读入MNIST
+- ml.TFModel 增加 LSTM
+- ml.TFModel 增加 Transformer
+
+#### V0.1.5
+- TFModel支持预训练参数自动载入
+- TFModel预训练参数支持从多个模型分别载入
+
+#### V0.1.4
+- Dataset支持训练、验证、测试三级划分，同时兼容训练、测试二级划分。
+- TFModel按验证最优报告测试性能
+- TFModel默认总是保存模型
+- TFModel支持自动重复训练，计算置信区间
+- TFModel支持自定义不同的优化目标和评价指标
+- alz增加mcl算法，一种简易的无监督图聚类算法
+
+#### V0.1.3
+- WaveNet 增加BN层
+- TFModel增加全局训练/测试指示变量
+- DataPack增加dump/load方法
+
+#### V0.1.2
+- 重写WaveNet，训练/推断速度大幅提升，移除了对输入序列长度的限制，更灵活的参数输入方式。
+
 ## V0.1
 
 - 重新初始化apdt包，设alz, io, ml, plt, proc, general六个子模块；
@@ -17,33 +49,3 @@
 - 初始化项目文档Introduction.md，但格式仍需调整；
 - 初始化变更日志CHANGELOG.md；
 - 构建script.py，以北京PM2.5预测为demo；
-
-#### V0.1.2
-- 重写WaveNet，训练/推断速度大幅提升，移除了对输入序列长度的限制，更灵活的参数输入方式。
-
-#### V0.1.3
-- WaveNet 增加BN层
-- TFModel增加全局训练/测试指示变量
-- DataPack增加dump/load方法
-
-#### V0.1.4
-- Dataset支持训练、验证、测试三级划分，同时兼容训练、测试二级划分。
-- TFModel按验证最优报告测试性能
-- TFModel默认总是保存模型
-- TFModel支持自动重复训练，计算置信区间
-- TFModel支持自定义不同的优化目标和评价指标
-- alz增加mcl算法，一种简易的无监督图聚类算法
-
-#### V0.1.5
-- TFModel支持预训练参数自动载入
-- TFModel预训练参数支持从多个模型分别载入
-
-#### V0.1.6
-- 增加 io.DarkSkyAPI
-- ml.TFModel 中 clip_grad 默认改为 False
-- ml.TFModel.fit 增加 higher_better 参数
-- io.load_nms 增加关闭并行选项
-- ml.Dataset 支持有监督学习模式
-- ml.Dataset 支持直接读入MNIST
-- ml.TFModel 增加 LSTM
-- ml.TFModel 增加 Transformer
