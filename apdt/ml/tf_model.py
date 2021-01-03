@@ -677,6 +677,8 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
             the dilated rate and conv kernel width. Larger number leads to more parameters and better fit capability.
         loss: str, optional: 'MAE' (default), 'RMSE'
             the loss function type.
+        valid_loss: bool, default False
+            if True, only predictions with full observations in receptive fields will be used to calculate loss.
         bits: int, default 5
             the u-law quatilization bit number. More bits leads to finner predcition resolution.
         return_type: str, optional 'pred+loss' (default), 'feature'
@@ -689,11 +691,11 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
     Return
     ------
         tensor 'pred'
-            The corresponding prediction series. a tensor shaped [batch_size, time_length-1, 1]
+            The corresponding prediction series. a tensor shaped [batch_size, time_length, 1]
         tensor 'loss'
             The loss value.
         tensor 'feature'
-            the raw causal features. a tensor shaped [batch_size, time_length-1, skip_channel*DilatedConvLayers+input_dim]
+            the raw causal features. a tensor shaped [batch_size, time_length, skip_channel*DilatedConvLayers+input_dim]
     '''
     if 'res_channel' not in kwarg.keys():
         kwarg['res_channel'] = 32
@@ -722,6 +724,8 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
         kwarg['batch_norm'] = False
     if kwarg['batch_norm'] and 'training' not in kwarg.keys():
         Exception('training parameters is required when batch norm is enabled.')
+    if 'valid_loss' not in kwarg.keys():
+        kwarg['valid_loss'] = False
     
     if weights is None:
         weights = wavenet_weight(name=name, res_channel=kwarg['res_channel'], skip_channel=kwarg['skip_channel'],
@@ -733,8 +737,7 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
 
     def SingleChannelNetwork(x,channel,bits,encoder,decoder,name='Channel'):
         with tf.variable_scope(name):
-            y = x[:,1:,channel:channel+1]
-            x = x[:,:-1,:]
+            x_input = x
             _skip = [x]
             w = weights['1_by_1_x']
             x = tf.nn.conv1d(x, w, 1, 'SAME')
@@ -765,10 +768,15 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
             pred = tf.nn.conv1d(skip, w, 1, 'SAME')
             pred_prob = tf.nn.softmax(pred)
             pred = tf.nn.conv1d(pred_prob, decoder(tf.constant(np.arange(2**bits).reshape(1,2**bits))), 1, 'SAME')
+            if not kwarg['valid_loss']:
+                shift = 0
+            else:
+                shift = kwarg['dilated'] ** kwarg['DilatedConvLayers']
+            residual = pred[:, shift:-1, channel] - x_input[:, 1+shift:, channel]
             if kwarg['loss']=='MAE':
-                loss = tf.reduce_mean(tf.abs(pred-y))
+                loss = tf.reduce_mean(tf.abs(residual))
             elif kwarg['loss']=='RMSE':
-                loss = tf.sqrt(tf.reduce_mean(tf.square(pred-y)))
+                loss = tf.sqrt(tf.reduce_mean(tf.square(residual)))
             return pred,loss,skip_raw
     
     pred,loss,skip_raw = SingleChannelNetwork(input,0,kwarg['bits'],u_law_encoder,u_law_decoder,name=name)
