@@ -1,6 +1,7 @@
 # Change Log
 
 #### V0.1.7
+- 增加 alz.moving_prediction 方法
 
 #### V0.1.6
 - 增加 io.DarkSkyAPI

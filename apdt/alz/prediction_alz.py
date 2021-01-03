@@ -1,7 +1,7 @@
 # pylint: disable=E1136
 import numpy as np
 
-def moving_predict(x, func, par={}, width=None, step=10, strides=1, **kwarg):
+def moving_predict(x, func, par={}, width=None, step=10, **kwarg):
     '''apply a auto-regressive moving prediction on given series.
     Parameters
     -------
@@ -15,12 +15,8 @@ def moving_predict(x, func, par={}, width=None, step=10, strides=1, **kwarg):
             the observation window width T of func.
         step, int, default 10
             the number of moving steps.
-        strides, int, default 1
-            the strides of every moving steps.
-        predict_dim, int, default 1
-            the dimension returned by func.
         loss, str, default 'MAE'
-            the loss function, available: 'MAE'.
+            the loss function, available: 'MAE', 'RMSE'.
 
     Returns
     -------
@@ -30,16 +26,16 @@ def moving_predict(x, func, par={}, width=None, step=10, strides=1, **kwarg):
             the average prediction loss.
     '''
     # Parameter Check
-    if 'predict_dim' not in kwarg.keys():
-        kwarg['predict_dim'] = 1
     if 'loss' not in kwarg.keys():
         kwarg['loss'] = 'MAE'
 
     if width is None:
         width = x.shape[1]
 
-    r = np.array(x)
     N, L, D = x.shape
+    _, strides, predict_dim = func(np.ones([N, width, D]), **par).shape
+
+    r = np.array(x)
     r = np.concatenate([r, np.zeros([N, step * strides - (L - width) % (step * strides), D])], axis=1)
     pt = 0
     while pt+width<=L:
@@ -49,11 +45,15 @@ def moving_predict(x, func, par={}, width=None, step=10, strides=1, **kwarg):
         for s in range(step):
             obv = slides[:, s*strides:width+s*strides, :]
             pred = func(obv, **par)
-            slides[:, width+s*strides:width+(s+1)*strides, :kwarg['predict_dim']] = pred
+            slides[:, width+s*strides:width+(s+1)*strides, :predict_dim] = pred
         r[:, pt+width:pt + width + step * strides, :] = slides[:, width: width + step * strides, :]
         pt = pt + step * strides
 
-    residual = r[:N, width: L, :kwarg['predict_dim']] - x[:N, width: L, :kwarg['predict_dim']]
+    residual = r[:N, width: L, :predict_dim] - x[:N, width: L, :predict_dim]
     if kwarg['loss'] == 'MAE':
         loss = np.mean(np.abs(residual))
+    elif kwarg['loss'] == 'RMSE':
+        loss = np.sqrt(np.mean(residual ** 2))
+    else:
+        loss = -1.0
     return r, loss
