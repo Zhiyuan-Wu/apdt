@@ -28,7 +28,7 @@ def stacked_window(x, width, shift=0):
     _T = _x.shape[1].value
     _x = tf.transpose(_x, [0, 2, 1])
     _x = tf.reshape(_x, [N*D, _T, 1])
-    w = tf.constant(np.eye(width).reshape([width, 1, width]) * 1.0)
+    w = tf.constant(np.eye(width).reshape([width, 1, width]), dtype=x.dtype)
     result = tf.nn.conv1d(_x, w, 1, 'VALID')
     result = result[:, max(-shift, 0): max(-shift, 0) + T, :]
     result = tf.reshape(result, [N, D, T, width])

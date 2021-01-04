@@ -17,6 +17,8 @@ def moving_predict(x, func, par={}, width=None, step=10, **kwarg):
             the number of moving steps.
         loss, str, default 'MAE'
             the loss function, available: 'MAE', 'RMSE'.
+        long_input, bool, default False
+            if True, a series of length width+strides instead of width will be given to func. strides have to be provided as well. this option is useful when some of future input can be considered as given.
 
     Returns
     -------
@@ -28,12 +30,16 @@ def moving_predict(x, func, par={}, width=None, step=10, **kwarg):
     # Parameter Check
     if 'loss' not in kwarg.keys():
         kwarg['loss'] = 'MAE'
+    if 'long_input' not in kwarg.keys():
+        kwarg['long_input'] = False
+    if kwarg['long_input'] and 'strides' not in kwarg.keys():
+        raise Exception('strides have to be given when long_input=True')
 
     if width is None:
         width = x.shape[1]
 
     N, L, D = x.shape
-    _, strides, predict_dim = func(np.ones([N, width, D]), **par).shape
+    _, strides, predict_dim = func(np.ones([N, width + kwarg['long_input'] * kwarg['strides'], D]), **par).shape
 
     r = np.array(x)
     r = np.concatenate([r, np.zeros([N, step * strides - (L - width) % (step * strides), D])], axis=1)
@@ -43,7 +49,7 @@ def moving_predict(x, func, par={}, width=None, step=10, **kwarg):
         if slides.shape[1] < width + step * strides:
             slides = np.concatenate([slides, np.zeros([N, width + step * strides - slides.shape[1], D])], axis=1)
         for s in range(step):
-            obv = slides[:, s*strides:width+s*strides, :]
+            obv = slides[:, s*strides:width+(s+kwarg['long_input'])*strides, :]
             pred = func(obv, **par)
             slides[:, width+s*strides:width+(s+1)*strides, :predict_dim] = pred
         r[:, pt+width:pt + width + step * strides, :] = slides[:, width: width + step * strides, :]
