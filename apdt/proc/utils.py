@@ -43,3 +43,42 @@ def linear_normalize(datapack, columns='data0', method='99pt'):
 
     return datapack
 
+def time_stamp_feature(datapack, item='ALL'):
+    '''Add sin and cos embedding to data as external feature.
+    Parameters
+    ------
+        datapack, Datapack
+            the datapack to be processed.
+        item, list of str, default 'ALL'
+            a sub-list of ['month_cos', 'month_sin', 'weekday_cos', 'weekday_sin', 'hour_cos', 'hour_sin'], deciding which feature to append.
+    Returns
+    ------
+        datapack
+    '''
+    if item=='ALL':
+        item = ['month_cos', 'month_sin', 'weekday_cos', 'weekday_sin', 'hour_cos', 'hour_sin']
+    if type(item) is str:
+        item = [item]
+
+    K = len(datapack.data_type)
+    time_stamp = datapack.data.index
+    datapack.data_type = datapack.data_type + item
+    if 'month_cos' in item:
+        datapack.data['data'+str(K)] = np.cos(2*np.pi*time_stamp.month.to_numpy()/12.0)
+        K += 1
+    if 'month_sin' in item:
+        datapack.data['data'+str(K)] = np.sin(2*np.pi*time_stamp.month.to_numpy()/12.0)
+        K += 1
+    if 'weekday_cos' in item:
+        datapack.data['data'+str(K)] = np.cos(2*np.pi*time_stamp.weekday.to_numpy()/7.0)
+        K += 1
+    if 'weekday_sin' in item:
+        datapack.data['data'+str(K)] = np.sin(2*np.pi*time_stamp.weekday.to_numpy()/7.0)
+        K += 1
+    if 'hour_cos' in item:
+        datapack.data['data'+str(K)] = np.cos(2*np.pi*time_stamp.hour.to_numpy()/24.0)
+        K += 1
+    if 'hour_sin' in item:
+        datapack.data['data'+str(K)] = np.sin(2*np.pi*time_stamp.hour.to_numpy()/24.0)
+        K += 1
+    return datapack
