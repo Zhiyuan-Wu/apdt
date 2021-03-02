@@ -5,6 +5,7 @@ import os
 import time
 import apdt
 import pickle
+from apdt.ml.utils import _unzip_list
 
 try:
     import tensorflow as tf
@@ -299,6 +300,7 @@ class TFModel():
         self.loss = None
         self.metric = None
         self.pretrain_var_map = None
+        self.summary_merged = None
 
         # Define Model
         self.def_model(**kwarg)
@@ -310,6 +312,8 @@ class TFModel():
             raise Exception('self.loss not defined in your model.')        
         if self.pred is None:
             self.pred = self.metric
+        if self.summary_merged is None and len(tf.get_collection(tf.GraphKeys.SUMMARIES)) > 0:
+            self.summary_merged = tf.summary.merge_all()
         
         # Start Engine
         self.saver = tf.train.Saver(max_to_keep=None)
@@ -559,7 +563,11 @@ class TFModel():
             while 1:
                 version = time.strftime('%Y%m%d_%H%M%S')
                 try:
-                    os.mkdir('model/' + kwarg['model_name'] + version)
+                    model_path = 'model/' + kwarg['model_name'] + version
+                    os.mkdir(model_path)
+                    if self.summary_merged is not None:
+                        self.summary_writer = tf.summary.FileWriter(model_path + '/log', self.sess.graph)
+                        summary_counter = 0
                     break
                 except FileExistsError:
                     time.sleep(1)           
@@ -589,13 +597,20 @@ class TFModel():
                         feed_dict.update({self.learning_rate: lr, self.training: True})
                     else:
                         feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
+                    target = [self.train_op, self.loss, self.metric]
+                    if self.summary_merged is not None:
+                        target = target + [self.summary_merged]
                     # _, ls, me = self.sess.run([self.train_op, self.loss, self.metric], feed_dict)
-                    _re = self._zip_run([self.train_op, self.loss, self.metric], feed_dict)
-                    _re = np.array(_re).transpose()
+                    _re = self._zip_run(target, feed_dict)
+                    _re = _unzip_list(_re)
                     ls = np.mean(_re[1])
                     me = np.mean(_re[2])
                     train_ls.append(ls)
                     train_me.append(me)
+                    if self.summary_merged is not None:
+                        for x in _re[3]:
+                            self.summary_writer.add_summary(x, summary_counter)
+                            summary_counter += 1
                 
                 # print log
                 if (epoch+1)%kwarg['print_every_n_epochs'] == 0 and kwarg['verbose'] < 1:

@@ -5,6 +5,7 @@
 - ml.WaveNet 现在返回和输入序列长度相同的特征
 - ml.WaveNet 增加 valid_loss 参数，开启后只在有效观测区间计算loss
 - 增加 ml.stacked_window 方法
+- TFModel 可以使用 tf.summary 来自动启用TensorBoard
 
 #### V0.1.6
 - 增加 io.DarkSkyAPI
