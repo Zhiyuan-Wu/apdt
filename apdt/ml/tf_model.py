@@ -737,9 +737,7 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
 
     def SingleChannelNetwork(x,channel,bits,encoder,decoder,name='Channel'):
         with tf.variable_scope(name):
-            # x_input = x
-            y = x[:,1:,channel:channel+1]
-            x = x[:,:-1,:]
+            x_input = x
             _skip = [x]
             w = weights['1_by_1_x']
             x = tf.nn.conv1d(x, w, 1, 'SAME')
@@ -774,8 +772,7 @@ def WaveNet(input, weights=None, name='WaveNet', **kwarg):
                 shift = 0
             else:
                 shift = kwarg['dilated'] ** kwarg['DilatedConvLayers']
-            # residual = pred[:, shift:-1, channel] - x_input[:, 1+shift:, channel]
-            residual = pred - y
+            residual = pred[:, shift:-1, channel] - x_input[:, 1+shift:, channel]
             if kwarg['loss']=='MAE':
                 loss = tf.reduce_mean(tf.abs(residual))
             elif kwarg['loss']=='RMSE':
