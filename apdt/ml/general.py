@@ -246,7 +246,7 @@ class TFModel():
 
         - def_model(): you HAVE TO re-define this function to build your deep network. this fuction should define:
             - self.input, self.input should be a placeholder tensor or a list of such, where training batch passed to TFModel will be sent into;
-            - self.metric, self.metric should be a tensor, which will be print during training, and will by default be set to self.loss;
+            - self.metric, self.metric should be a list of tensor, which will be evaluated and printed during training, and will by default be set to [self.loss];
             - self.loss, self.loss should be a tensor of single float value, which will be minimized by optimizer;
             - self.pred. self.pred should be a tensor or a list of such, which will be the output to be evaluated given some input.
             - self.learning_rate (optional), self.learning_rate should be a placeholder tensor of single float value, which will control the gradient scale;
@@ -306,12 +306,14 @@ class TFModel():
         self.def_model(**kwarg)
         if self.loss is not None:
             if self.metric is None:
-                self.metric = self.loss
+                self.metric = [self.loss]
+            elif type(self.metric) is not list:
+                self.metric = [self.metric]
             self.setup_train_op(**kwarg)
         else:
             raise Exception('self.loss not defined in your model.')        
         if self.pred is None:
-            self.pred = self.metric
+            self.pred = self.metric[0]
         if self.summary_merged is None and len(tf.get_collection(tf.GraphKeys.SUMMARIES)) > 0:
             self.summary_merged = tf.summary.merge_all()
         
@@ -477,11 +479,11 @@ class TFModel():
         if kwarg['target']=='metric':
             target = self.metric
         elif kwarg['target']=='loss':
-            target = self.loss
+            target = [self.loss]
         else:
             raise Exception('Unsupport test target.')
         
-        me_list = []
+        me_list = [[] for _ in range(len(target))]
         for _ in range(batch_num//kwarg['batch_size']):
             batch = get_batch(kwarg['batch_size'])
             if type(self.input) is list:
@@ -490,9 +492,12 @@ class TFModel():
             else:
                 feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
             # ls = self.sess.run(self.loss, feed_dict)
-            me = self._zip_run(target, feed_dict)
-            me_list.append(me)
-        me_list = np.mean(me_list)
+            _re = self._zip_run(target, feed_dict)
+            _re = _unzip_list(_re)
+            for _i in range(len(target)):
+                me = np.mean(_re[_i])
+                me_list[_i].append(me)
+        me_list = [np.mean(x) for x in me_list]
 
         return me_list
 
@@ -589,7 +594,7 @@ class TFModel():
             for epoch in range(kwarg['epoch']):
                 # update an epoch
                 train_ls = []
-                train_me = []
+                train_me = [[] for _ in range(len(self.metric))]
                 for _ in range(dataset.tr_batch_num//kwarg['batch_size']):
                     batch = dataset.tr_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
@@ -597,31 +602,37 @@ class TFModel():
                         feed_dict.update({self.learning_rate: lr, self.training: True})
                     else:
                         feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
-                    target = [self.train_op, self.loss, self.metric]
+                    target = [self.train_op, self.loss] 
                     if self.summary_merged is not None:
                         target = target + [self.summary_merged]
+                    target = target + self.metric
                     # _, ls, me = self.sess.run([self.train_op, self.loss, self.metric], feed_dict)
                     _re = self._zip_run(target, feed_dict)
                     _re = _unzip_list(_re)
+                    # _re is a list of list. _re[0] is list of returned object of self.train_op; _re[1] is list of self.loss; _re[2] is list of summary record; _re[3] and later is list of metric(s). 
                     ls = np.mean(_re[1])
-                    me = np.mean(_re[2])
                     train_ls.append(ls)
-                    train_me.append(me)
                     if self.summary_merged is not None:
-                        for x in _re[3]:
+                        for x in _re[2]:
                             self.summary_writer.add_summary(x, summary_counter)
                             summary_counter += 1
+                    for _i in range(len(self.metric)):
+                        me = np.mean(_re[3+_i])
+                        train_me[_i].append(me)
                 
                 # print log
                 if (epoch+1)%kwarg['print_every_n_epochs'] == 0 and kwarg['verbose'] < 1:
                     train_ls = np.mean(train_ls)
-                    train_me = np.mean(train_me)
+                    train_me = [np.mean(m) for m in train_me]
                     if kwarg['print_type']=='metric':
-                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train metric ',round(train_me,4))
+                        for _i in range(len(self.metric)):
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train metric ',round(train_me[_i],4))
                     elif kwarg['print_type']=='loss':
                         print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
                     else:
-                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4), '. Train metric ',round(train_me,4))
+                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+                        for _x in train_me:
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train metric ',round(_x,4))
                 
                 # learning_rate_decay
                 if kwarg['lr_annealing']=='step':
@@ -637,10 +648,11 @@ class TFModel():
                     # validate
                     val_me = self.test(dataset, mode=kwarg['validate_on'], target='metric', batch_size=kwarg['batch_size'])
                     if kwarg['verbose'] < 1:
-                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(val_me,4))
+                        for _x in val_me:
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(_x,4))
 
                     # save model
-                    target = val_me
+                    target = val_me[0]
                     if (target < performance_recorder) ^ kwarg['higher_better']:
                         performance_recorder = target
                         epoch_recorder = epoch
@@ -676,8 +688,8 @@ class TFModel():
         
         # Compute repeat summary
         if kwarg['repeat'] > 1:
-            test_ls_mean = np.mean(repeat_metric_set)
-            test_ls_std = np.std(repeat_metric_set)
+            test_ls_mean = np.mean(repeat_metric_set, 0)
+            test_ls_std = np.std(repeat_metric_set, 0)
             total_time = np.sum(repeat_time_set)
             if kwarg['verbose'] < 2:
                 print('=======Repeat Summary=======')
@@ -685,8 +697,9 @@ class TFModel():
                 print('Model list: ', repeat_name_set)
                 print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(total_time)))
                 print('Test loss: ', repeat_metric_set)
-                print('Average loss: ', test_ls_mean)
-                print('95 confidence interval: ', test_ls_std*1.96, '(',test_ls_mean-test_ls_std*1.96,'~',test_ls_mean+test_ls_std*1.96,')')
+                for _i in range(len(self.metric)):
+                    print('Average loss: ', test_ls_mean[_i])
+                    print('95 confidence interval: ', test_ls_std[_i]*1.96, '(',test_ls_mean[_i]-test_ls_std[_i]*1.96,'~',test_ls_mean[_i]+test_ls_std[_i]*1.96,')')
 
         if kwarg['verbose'] < 1:
             print('Done.')            
