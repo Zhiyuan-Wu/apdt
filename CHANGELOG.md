@@ -7,6 +7,7 @@
 - 增加 ml.stacked_window 方法
 - TFModel 可以使用 tf.summary 来自动启用TensorBoard
 - TFModel 支持以 list 作为 self.metric
+- TFModel 增加 self.training_process 量指示训练进程
 
 #### V0.1.6
 - 增加 io.DarkSkyAPI

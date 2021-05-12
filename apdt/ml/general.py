@@ -295,6 +295,7 @@ class TFModel():
         # Initial tensor
         self.training = tf.placeholder(tf.bool)
         self.learning_rate = tf.placeholder(tf.float32)
+        self.training_process = tf.placeholder(tf.float32)
         self.input = [None]
         self.pred = None
         self.loss = None
@@ -395,9 +396,9 @@ class TFModel():
     def eval(self, data):
         if type(self.input) is list:
             feed_dict = {self.input[i]: data[i] for i in range(len(self.input))}
-            feed_dict.update({self.learning_rate: 0.0, self.training: False})
+            feed_dict.update({self.learning_rate: 0.0, self.training: False, self.training_process: 0.0})
         else:
-            feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: data}
+            feed_dict = {self.learning_rate: 0.0, self.training: False, self.training_process: 0.0, self.input: data}
         result = self.sess.run(self.pred, feed_dict)
         return result
 
@@ -488,9 +489,9 @@ class TFModel():
             batch = get_batch(kwarg['batch_size'])
             if type(self.input) is list:
                 feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                feed_dict.update({self.learning_rate: 0.0, self.training: False})
+                feed_dict.update({self.learning_rate: 0.0, self.training: False, self.training_process: 0.0})
             else:
-                feed_dict = {self.learning_rate: 0.0, self.training: False, self.input: batch}
+                feed_dict = {self.learning_rate: 0.0, self.training: False, self.training_process: 0.0, self.input: batch}
             # ls = self.sess.run(self.loss, feed_dict)
             _re = self._zip_run(target, feed_dict)
             _re = _unzip_list(_re)
@@ -599,9 +600,10 @@ class TFModel():
                     batch = dataset.tr_get_batch(kwarg['batch_size'])
                     if type(self.input) is list:
                         feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
-                        feed_dict.update({self.learning_rate: lr, self.training: True})
+                        feed_dict.update({self.learning_rate: lr, self.training: True,
+                             self.training_process: float((epoch+1)/kwarg['epoch'])})
                     else:
-                        feed_dict = {self.learning_rate: lr, self.training: True, self.input: batch}
+                        feed_dict = {self.learning_rate: lr, self.training: True, self.training_process: float((epoch+1)/kwarg['epoch']), self.input: batch}
                     target = [self.train_op, self.loss] 
                     if self.summary_merged is not None:
                         target = target + [self.summary_merged]
