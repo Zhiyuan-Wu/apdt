@@ -300,6 +300,7 @@ class TFModel():
         self.pred = None
         self.loss = None
         self.metric = None
+        self.metric_name = None
         self.pretrain_var_map = None
         self.summary_merged = None
 
@@ -310,6 +311,8 @@ class TFModel():
                 self.metric = [self.loss]
             elif type(self.metric) is not list:
                 self.metric = [self.metric]
+            if self.metric_name is None:
+                self.metric_name = ['metric_' + str(i) for i in range(len(self.metric))]
             self.setup_train_op(**kwarg)
         else:
             raise Exception('self.loss not defined in your model.')        
@@ -628,13 +631,13 @@ class TFModel():
                     train_me = [np.mean(m) for m in train_me]
                     if kwarg['print_type']=='metric':
                         for _i in range(len(self.metric)):
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train metric ',round(train_me[_i],4))
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(train_me[_i],4))
                     elif kwarg['print_type']=='loss':
                         print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
                     else:
                         print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
-                        for _x in train_me:
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train metric ',round(_x,4))
+                        for _i,_x in enumerate(train_me):
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(_x,4))
                 
                 # learning_rate_decay
                 if kwarg['lr_annealing']=='step':
@@ -650,8 +653,8 @@ class TFModel():
                     # validate
                     val_me = self.test(dataset, mode=kwarg['validate_on'], target='metric', batch_size=kwarg['batch_size'])
                     if kwarg['verbose'] < 1:
-                        for _x in val_me:
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val metric ',round(_x,4))
+                        for _i,_x in enumerate(val_me):
+                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val '+self.metric_name[_i],round(_x,4))
 
                     # save model
                     target = val_me[0]
@@ -700,7 +703,7 @@ class TFModel():
                 print('Time used: ', time.strftime('%H:%M:%S',time.gmtime(total_time)))
                 print('Test loss: ', repeat_metric_set)
                 for _i in range(len(self.metric)):
-                    print('Average loss: ', test_ls_mean[_i])
+                    print('Average '+self.metric_name[_i], test_ls_mean[_i])
                     print('95 confidence interval: ', test_ls_std[_i]*1.96, '(',test_ls_mean[_i]-test_ls_std[_i]*1.96,'~',test_ls_mean[_i]+test_ls_std[_i]*1.96,')')
 
         if kwarg['verbose'] < 1:
