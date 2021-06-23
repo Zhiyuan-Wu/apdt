@@ -320,6 +320,7 @@ class TFModel():
             self.pred = self.metric[0]
         if self.summary_merged is None and len(tf.get_collection(tf.GraphKeys.SUMMARIES)) > 0:
             self.summary_merged = tf.summary.merge_all()
+        self.variables_num = np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()])
         
         # Start Engine
         self.saver = tf.train.Saver(max_to_keep=None)
