@@ -1,5 +1,7 @@
 # Change Log
 
+#### V0.1.8
+
 #### V0.1.7
 - 增加 alz.moving_prediction 方法
 - ml.WaveNet 现在返回和输入序列长度相同的特征

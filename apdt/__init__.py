@@ -12,4 +12,4 @@ from apdt import alz
 from apdt import proc
 from apdt import ml
 
-__version__ = '0.1.6'
+__version__ = '0.1.7'
