@@ -313,6 +313,9 @@ class TFModel():
                 self.metric = [self.metric]
             if self.metric_name is None:
                 self.metric_name = ['metric_' + str(i) for i in range(len(self.metric))]
+            if len(self.metric_name) < len(self.metric):
+                _diff = len(self.metric) - len(self.metric_name)
+                self.metric_name = self.metric_name + ['metric_' + str(i) for i in range(_diff)]
             self.setup_train_op(**kwarg)
         else:
             raise Exception('self.loss not defined in your model.')        
