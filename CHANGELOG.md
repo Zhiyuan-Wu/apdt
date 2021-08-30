@@ -1,6 +1,7 @@
 # Change Log
 
 #### V0.1.8
+- ml.TFModel 增加 1-D CNN
 
 #### V0.1.7
 - 增加 alz.moving_prediction 方法
