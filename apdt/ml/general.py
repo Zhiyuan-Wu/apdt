@@ -626,7 +626,7 @@ class TFModel():
                             self.summary_writer.add_summary(x, summary_counter)
                             summary_counter += 1
                     for _i in range(len(self.metric)):
-                        me = np.mean(_re[3+_i])
+                        me = np.mean(_re[(3 if self.summary_merged is not None else 2) +_i])
                         train_me[_i].append(me)
                 
                 # print log
