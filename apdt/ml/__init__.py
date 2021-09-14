@@ -11,4 +11,4 @@ from apdt.ml.tf_model import wavenet_weight, WaveNet, mlp_weight, MLP, lstm_weig
 from apdt.ml.tf_model import cnn1d_weight, cnn1d
 from apdt.ml.tf_model import Transformer_ar_decoder_weight, Transformer_ar_decoder
 from apdt.ml.tf_model import _WaveNet
-from apdt.ml.utils import stacked_window
+from apdt.ml.utils import stacked_window, batch_norm, layer_norm

@@ -2,6 +2,7 @@
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN
+- 增加 ml.batch_norm 和 ml.layer_norm 方法
 
 #### V0.1.7
 - 增加 alz.moving_prediction 方法

@@ -263,7 +263,7 @@ class TFModel():
         - model.__init__()
             - l2_norm, float, default None.
                 A L2-Regularization will apllied with weight decay parameter as l2_norm, It will be disabled when given None.
-            - clip_gvs, bool, default True.
+            - clip_gvs, bool, default False.
                 all gradients in network will be cliiped to [-1,1] when set True.
             - seed, int, default to currrent time.
                 The random seed to be set in Numpy and Tensorflow.
