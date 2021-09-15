@@ -194,7 +194,7 @@ class DataSet():
         if batch_size > self.val_batch_num:
             batch_size = self.val_batch_num
         if self.val_batch_counter + batch_size > self.val_batch_num:
-            if not self.kwarg['shuffle_train_only']:
+            if not self._kwarg['shuffle_train_only']:
                 np.random.shuffle(self.val_batch_perm)
             self.val_batch_counter = 0
         target_index = self.val_batch_perm[self.val_batch_counter: self.val_batch_counter + batch_size]
@@ -212,7 +212,7 @@ class DataSet():
         if batch_size > self.te_batch_num:
             batch_size = self.te_batch_num
         if self.te_batch_counter + batch_size > self.te_batch_num:
-            if not self.kwarg['shuffle_train_only']:
+            if not self._kwarg['shuffle_train_only']:
                 np.random.shuffle(self.te_batch_perm)
             self.te_batch_counter = 0
         target_index = self.te_batch_perm[self.te_batch_counter: self.te_batch_counter + batch_size]
