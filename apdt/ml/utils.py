@@ -27,6 +27,9 @@ def batch_norm(x, training_flag, gamma=0.99, learnable=True, name='bn'):
     ------
         tensor
             same shape with x
+    Notes
+    ------
+        This function include in-trainable variables and maybe incompitable with current pretrain model loading mechanism.
     '''
     num_dims = x.shape.ndims
     D = x.shape[-1].value
@@ -46,21 +49,21 @@ def batch_norm(x, training_flag, gamma=0.99, learnable=True, name='bn'):
 
     return x
 
-def layer_norm(x, training_flag, gamma=0.99, learnable=True, name='ln'):
+def layer_norm(x, K=1, learnable=True, name='ln'):
     '''Apply layer norm to input x, i.e., turn output of each sample into a (learnable) gaussian distribution. 
     This function will introduce new in-trainable variables into models. 
-    Its Useful to insert this function between linear mapping and activation to get magical improvements/degradation.
+    Its Useful to insert this function between layers to get magical improvements/degradation.
 
     Parameters
     ------
         x, tensor
             input time series of shape [batch_size, spatial_dim_1, ..., spatial_dim_S, feature_dim]
-        training_flag, tensor
-            a bool scalar tensor indicating if its training phase, usually TFModel.training
-        gamma, float, default 0.99
-            moving average decay weight.
+        K, int, default 1
+            along last K dimensions to average on
         learnable, bool, default True
-            whether to introduce learnable mean and var to target distribution.
+            whether to introduce learnable mean and var to target distribution. Becareful that layer norm use 
+            element-wise learnable parameter (different from batch norm that use scalar), which may result in
+            very large parameter size.
         name, str, default "bn"
             the name prefix for new variables
     Returns
@@ -69,22 +72,15 @@ def layer_norm(x, training_flag, gamma=0.99, learnable=True, name='ln'):
             same shape with x
     '''
     num_dims = x.shape.ndims
-    B = x.shape[0].value
-    x = tf.transpose(x, [i for i in range(1, num_dims)] + [0])
+    N = list(map(lambda _x: _x.value, x.shape))
 
-    running_mean = tf.get_variable(name+'_running_mean', [B,], initializer=tf.constant_initializer(0.0),trainable=False)
-    running_var = tf.get_variable(name+'_running_var', [B,], initializer=tf.constant_initializer(1.0),trainable=False)
     if learnable:
-        learnable_mean = tf.get_variable(name+'_learnable_mean', [B,], initializer=tf.constant_initializer(0.0))
-        learnable_var = tf.get_variable(name+'_learnable_var', [B,], initializer=tf.constant_initializer(1.0))
-    mean, var = tf.nn.moments(x, [i for i in range(num_dims-1)])
-    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, tf.assign(running_mean, running_mean * gamma + mean * (1-gamma)))
-    tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, tf.assign(running_var, running_var * gamma + var * (1-gamma)))
-    mean, var = tf.cond(training_flag, lambda: (mean, var), lambda: (running_mean, running_var))
+        learnable_mean = tf.get_variable(name+'_learnable_mean', N[-K:], initializer=tf.constant_initializer(0.0))
+        learnable_var = tf.get_variable(name+'_learnable_var', N[-K:], initializer=tf.constant_initializer(1.0))
+    mean, var = tf.nn.moments(x, list(range(num_dims))[-K:], keep_dims=True)
     x = (x - mean) / tf.sqrt(var + 1e-6)
     if learnable:
         x = x * tf.sqrt(learnable_var + 1e-6) + learnable_mean
-    x = tf.transpose(x, [num_dims-1] + [i for i in range(num_dims-1)])
 
     return x
 

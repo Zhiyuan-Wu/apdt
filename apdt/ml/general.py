@@ -39,12 +39,21 @@ class DataSet():
                 - sub_sample=1: the sub_sample rate. The data time span should be at least seq_len*sub_sample (instead of (seq_len-1)*sub_sample+1) to ensure one sample
                 - normalize=True: if we do 0-1 normalize, Warning: dataset should always be properly normalized, and this operation is a in-place operation.
                 - feature=['data0', 'data1', ...]: the feature list to be used. default to all features avaliable.
+        seed: int
+            The initial random seed, default no seed.
+        shuffle_train_only: bool, default False
+            if False, Train/Val/Test set will be shuffled at every glance. if True, only Train set will.
 
     '''
     def __init__(self, datapack, **kwarg):
         if 'supervised' not in kwarg.keys():
             kwarg['supervised'] = False
+        if 'seed' not in kwarg.keys():
+            kwarg['seed'] = None
+        if 'shuffle_train_only' not in kwarg.keys():
+            kwarg['shuffle_train_only'] = False
 
+        self._kwarg = kwarg
         self.supervised = kwarg['supervised']
 
         if type(datapack) is apdt.DataPack:
@@ -151,17 +160,18 @@ class DataSet():
             self.te = np.transpose(self.te, (0,2,1,3))
 
     def _init_counter(self, **kwarg):
-        if 'seed' in kwarg.keys():
+        if kwarg['seed'] is not None:
             np.random.seed(kwarg['seed'])
         self.tr_batch_counter = 0
         self.val_batch_counter = 0
         self.te_batch_counter = 0
         self.tr_batch_perm = np.linspace(0, self.tr_batch_num-1, self.tr_batch_num, dtype=np.int32)
-        np.random.shuffle(self.tr_batch_perm)
         self.val_batch_perm = np.linspace(0, self.val_batch_num-1, self.val_batch_num, dtype=np.int32)
-        np.random.shuffle(self.val_batch_perm)
         self.te_batch_perm = np.linspace(0, self.te_batch_num-1, self.te_batch_num, dtype=np.int32)
-        np.random.shuffle(self.te_batch_perm)
+        np.random.shuffle(self.tr_batch_perm)
+        if not kwarg['shuffle_train_only']:
+            np.random.shuffle(self.val_batch_perm)
+            np.random.shuffle(self.te_batch_perm)
 
     def tr_get_batch(self, batch_size=1):
         if batch_size > self.tr_batch_num:
@@ -184,7 +194,8 @@ class DataSet():
         if batch_size > self.val_batch_num:
             batch_size = self.val_batch_num
         if self.val_batch_counter + batch_size > self.val_batch_num:
-            np.random.shuffle(self.val_batch_perm)
+            if not self.kwarg['shuffle_train_only']:
+                np.random.shuffle(self.val_batch_perm)
             self.val_batch_counter = 0
         target_index = self.val_batch_perm[self.val_batch_counter: self.val_batch_counter + batch_size]
         self.val_batch_counter = self.val_batch_counter + batch_size
@@ -201,7 +212,8 @@ class DataSet():
         if batch_size > self.te_batch_num:
             batch_size = self.te_batch_num
         if self.te_batch_counter + batch_size > self.te_batch_num:
-            np.random.shuffle(self.te_batch_perm)
+            if not self.kwarg['shuffle_train_only']:
+                np.random.shuffle(self.te_batch_perm)
             self.te_batch_counter = 0
         target_index = self.te_batch_perm[self.te_batch_counter: self.te_batch_counter + batch_size]
         self.te_batch_counter = self.te_batch_counter + batch_size
