@@ -419,17 +419,16 @@ class TFModel():
         Returns
         ----------
             out, a list of list, where: 
-                out[0] unused;
-                out[1] is a list of real value, considered as loss in report;
-                out[2+k] is a list of real value, considered as metric[k] in report;
-                out[2+K] is a list of summary result, if self.summary_merged is not None;
+                out[0] is a list of real value, considered as loss in report;
+                out[1+k] is a list of real value, considered as metric[k] in report;
+                out[1+K] is a list of summary result, if self.summary_merged is not None;
         '''
         target = [self.train_op, self.loss] + self.metric
         if self.summary_merged is not None:
             target = target + [self.summary_merged]
         _re = self._zip_run(target, feed_dict)
         _re = _unzip_list(_re)
-        return _re
+        return _re[1:]
 
     def eval(self, data):
         if type(self.input) is list:
@@ -642,15 +641,16 @@ class TFModel():
                              self.training_process: float((epoch+1)/kwarg['epoch'])})
                     else:
                         feed_dict = {self.learning_rate: lr, self.training: True, self.training_process: float((epoch+1)/kwarg['epoch']), self.input: batch}
-                    # _re is a list of list. _re[0] is list of returned object of self.train_op; _re[1] is list of self.loss; _re[2+k] is list of metric[k]; _re[2+K] is list of summary record (if defined). 
+                    # _re is a list of list. _re[0] is list of self.loss; _re[1+k] is list of metric[k];
+                    # _re[1+K] is list of summary record (if defined). 
                     _re = self.update(feed_dict)
-                    ls = np.mean(_re[1])
+                    ls = np.mean(_re[0])
                     train_ls.append(ls)
                     for _i in range(len(self.metric)):
-                        me = np.mean(_re[2+_i])
+                        me = np.mean(_re[1+_i])
                         train_me[_i].append(me)
                     if self.summary_merged is not None:
-                        for x in _re[2+len(self.metric)]:
+                        for x in _re[1+len(self.metric)]:
                             self.summary_writer.add_summary(x, summary_counter)
                             summary_counter += 1
                     
