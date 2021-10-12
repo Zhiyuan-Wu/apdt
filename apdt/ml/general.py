@@ -259,7 +259,7 @@ class TFModel():
         - def_model(): you HAVE TO re-define this function to build your deep network. this fuction should define:
             - self.input, self.input should be a placeholder tensor or a list of such, where training batch passed to TFModel will be sent into;
             - self.metric, self.metric should be a list of tensor, which will be evaluated and printed during training, and will by default be set to [self.loss];
-            - self.loss, self.loss should be a tensor of single float value, which will be minimized by optimizer;
+            - self.loss, self.loss should be a tensor of single float value, which will be minimized by optimizer; (after 0.1.8) self.loss can be a list to define complex optimization like GAN.
             - self.pred. self.pred should be a tensor or a list of such, which will be the output to be evaluated given some input.
             - self.learning_rate (optional), self.learning_rate should be a placeholder tensor of single float value, which will control the gradient scale;
             - self.pretrain_var_map (optional), self.pretrain_var_map is only needed when pre-train model is given. The map between model variables, which need pre-train values instead of random initialization, to its name in pretrain model. By default {v.op.name: v for v in tf.trainable_variables()}.
@@ -275,6 +275,7 @@ class TFModel():
         - model.__init__()
             - l2_norm, float, default None.
                 A L2-Regularization will apllied with weight decay parameter as l2_norm, It will be disabled when given None.
+                l2_norm should not be used together with multiple loss.
             - clip_gvs, bool, default False.
                 all gradients in network will be cliiped to [-1,1] when set True.
             - seed, int, default to currrent time.
@@ -319,8 +320,10 @@ class TFModel():
         # Define Model
         self.def_model(**kwarg)
         if self.loss is not None:
+            if type(self.loss) is not list:
+                self.loss = [self.loss]
             if self.metric is None:
-                self.metric = [self.loss]
+                self.metric = self.loss
             elif type(self.metric) is not list:
                 self.metric = [self.metric]
             if self.metric_name is None:
@@ -385,32 +388,41 @@ class TFModel():
         # Set up optimizer
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         
-        # Add global regulizer
-        if kwarg['l2_norm']:
-            l2_loss =  kwarg['l2_norm'] * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()])
-            if kwarg['keep_norm_loss']:
-                self.loss = self.loss + l2_loss
-                gvs = optimizer.compute_gradients(self.loss)
+        # Compute Gradient
+        gvs = []
+        for i in range(len(self.loss)):
+            # Add global regulizer
+            if kwarg['l2_norm']:
+                l2_loss =  kwarg['l2_norm'] * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()])
+                if kwarg['keep_norm_loss']:
+                    self.loss[i] = self.loss[i] + l2_loss
+                    _gvs = optimizer.compute_gradients(self.loss[i])
+                else:
+                    _gvs = optimizer.compute_gradients(self.loss[i] + l2_loss)
             else:
-                gvs = optimizer.compute_gradients(self.loss + l2_loss)
-        else:
-            gvs = optimizer.compute_gradients(self.loss)
-        
-        # Clip Gradients
-        if kwarg['clip_gvs']:
-            clipped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs if grad is not None]
-            gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
-        
+                _gvs = optimizer.compute_gradients(self.loss[i])
+
+            # Clip Gradients
+            if kwarg['clip_gvs']:
+                clipped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in _gvs if grad is not None]
+                _gvs = [clipped_gvs[i] for i in range(0,len(clipped_gvs))]
+            
+            gvs.append(_gvs)
+
         # Check update ops.
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-            self.train_op = optimizer.apply_gradients(gvs)
+                self.train_op = [optimizer.apply_gradients(gvs[0])]
+        for i in range(1, len(self.loss)):
+            self.train_op.append(optimizer.apply_gradients(gvs[i]))
+        if len(self.loss)>1 and len(update_ops)>0:
+            print("WARNING: Update OP is bounded to loss[0].")
 
     def load(self, path):
         self.saver.restore(self.sess, save_path=path)
 
     def update(self, feed_dict):
-        '''Apply an update on network based on given feed_dict and return statistics.
+        '''Apply an update on network based on given feed_dict and return statistics. This function optimize the first given loss (self.loss[0]). In case of multiple loss defined, you may reload this function for customized optimization procedure.
         Parameters
         ----------
             feed_dict, dict
@@ -423,7 +435,7 @@ class TFModel():
                 out[1+k] is a list of real value, considered as metric[k] in report;
                 out[1+K] is a list of summary result, if self.summary_merged is not None;
         '''
-        target = [self.train_op, self.loss] + self.metric
+        target = [self.train_op[0], self.loss[0]] + self.metric
         if self.summary_merged is not None:
             target = target + [self.summary_merged]
         _re = self._zip_run(target, feed_dict)
@@ -517,7 +529,7 @@ class TFModel():
         if kwarg['target']=='metric':
             target = self.metric
         elif kwarg['target']=='loss':
-            target = [self.loss]
+            target = self.loss
         else:
             raise Exception('Unsupport test target.')
         

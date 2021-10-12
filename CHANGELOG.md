@@ -6,6 +6,8 @@
 - 重做 TFModel.Transformer
 - 为 MLP 增加 bn 支持
 - ml.DataSet 增加 shuffle_train_only 参数
+- TFModel 支持定义多个 loss
+- TFModel 支持重载 update 方法构造复杂的优化过程
 
 #### V0.1.7
 - 增加 alz.moving_prediction 方法
