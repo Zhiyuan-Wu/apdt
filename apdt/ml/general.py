@@ -409,8 +409,27 @@ class TFModel():
     def load(self, path):
         self.saver.restore(self.sess, save_path=path)
 
-    def update(self, data):
-        pass
+    def update(self, feed_dict):
+        '''Apply an update on network based on given feed_dict and return statistics.
+        Parameters
+        ----------
+            feed_dict, dict
+                a dictionary that maps all necessary input tensor to their input value 
+        
+        Returns
+        ----------
+            out, a list of list, where: 
+                out[0] unused;
+                out[1] is a list of real value, considered as loss in report;
+                out[2+k] is a list of real value, considered as metric[k] in report;
+                out[2+K] is a list of summary result, if self.summary_merged is not None;
+        '''
+        target = [self.train_op, self.loss] + self.metric
+        if self.summary_merged is not None:
+            target = target + [self.summary_merged]
+        _re = self._zip_run(target, feed_dict)
+        _re = _unzip_list(_re)
+        return _re
 
     def eval(self, data):
         if type(self.input) is list:
@@ -623,24 +642,18 @@ class TFModel():
                              self.training_process: float((epoch+1)/kwarg['epoch'])})
                     else:
                         feed_dict = {self.learning_rate: lr, self.training: True, self.training_process: float((epoch+1)/kwarg['epoch']), self.input: batch}
-                    target = [self.train_op, self.loss] 
-                    if self.summary_merged is not None:
-                        target = target + [self.summary_merged]
-                    target = target + self.metric
-                    # _, ls, me = self.sess.run([self.train_op, self.loss, self.metric], feed_dict)
-                    _re = self._zip_run(target, feed_dict)
-                    _re = _unzip_list(_re)
-                    # _re is a list of list. _re[0] is list of returned object of self.train_op; _re[1] is list of self.loss; _re[2] is list of summary record; _re[3] and later is list of metric(s). 
+                    # _re is a list of list. _re[0] is list of returned object of self.train_op; _re[1] is list of self.loss; _re[2+k] is list of metric[k]; _re[2+K] is list of summary record (if defined). 
+                    _re = self.update(feed_dict)
                     ls = np.mean(_re[1])
                     train_ls.append(ls)
+                    for _i in range(len(self.metric)):
+                        me = np.mean(_re[2+_i])
+                        train_me[_i].append(me)
                     if self.summary_merged is not None:
-                        for x in _re[2]:
+                        for x in _re[2+len(self.metric)]:
                             self.summary_writer.add_summary(x, summary_counter)
                             summary_counter += 1
-                    for _i in range(len(self.metric)):
-                        me = np.mean(_re[(3 if self.summary_merged is not None else 2) +_i])
-                        train_me[_i].append(me)
-                
+                    
                 # print log
                 if (epoch+1)%kwarg['print_every_n_epochs'] == 0 and kwarg['verbose'] < 1:
                     train_ls = np.mean(train_ls)
