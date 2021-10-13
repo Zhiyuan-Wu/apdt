@@ -2,12 +2,15 @@
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN
+- ml.TFModel 增加 2-D CNN
 - 增加 ml.batch_norm 和 ml.layer_norm 方法
 - 重做 TFModel.Transformer
 - 为 MLP 增加 bn 支持
 - ml.DataSet 增加 shuffle_train_only 参数
 - TFModel 支持定义多个 loss
 - TFModel 支持重载 update 方法构造复杂的优化过程
+- TFModel 增加优化器选择：Adam, RMSProp
+- TFModel 增加 iter_do 方法，在优化过程中执行指定操作
 
 #### V0.1.7
 - 增加 alz.moving_prediction 方法

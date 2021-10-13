@@ -282,6 +282,8 @@ class TFModel():
                 The random seed to be set in Numpy and Tensorflow.
             - pretrain_model, str, default None.
                 The pretrain model path.
+            - optimizer, str, default adam.
+                available: 'adam', 'rmsprop'
         
         - model.fit():
             - model_name='NewModel', str.
@@ -316,12 +318,15 @@ class TFModel():
         self.metric_name = None
         self.pretrain_var_map = None
         self.summary_merged = None
+        self.var_list = None
 
         # Define Model
         self.def_model(**kwarg)
         if self.loss is not None:
             if type(self.loss) is not list:
                 self.loss = [self.loss]
+            if self.var_list is None:
+                self.var_list = [tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) for _ in range(len(self.loss))]
             if self.metric is None:
                 self.metric = self.loss
             elif type(self.metric) is not list:
@@ -384,9 +389,14 @@ class TFModel():
             kwarg['keep_norm_loss'] = True
         if 'clip_gvs' not in kwarg.keys():
             kwarg['clip_gvs'] = False
+        if 'optimizer' not in kwarg.keys():
+            kwarg['optimizer'] = "adam"
 
         # Set up optimizer
-        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        if kwarg['optimizer']=="adam":
+            optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        elif kwarg['optimizer']=="rmsprop":
+            optimizer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate)
         
         # Compute Gradient
         gvs = []
@@ -396,11 +406,11 @@ class TFModel():
                 l2_loss =  kwarg['l2_norm'] * tf.add_n([tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()])
                 if kwarg['keep_norm_loss']:
                     self.loss[i] = self.loss[i] + l2_loss
-                    _gvs = optimizer.compute_gradients(self.loss[i])
+                    _gvs = optimizer.compute_gradients(self.loss[i], var_list=self.var_list[i])
                 else:
-                    _gvs = optimizer.compute_gradients(self.loss[i] + l2_loss)
+                    _gvs = optimizer.compute_gradients(self.loss[i] + l2_loss, var_list=self.var_list[i])
             else:
-                _gvs = optimizer.compute_gradients(self.loss[i])
+                _gvs = optimizer.compute_gradients(self.loss[i], var_list=self.var_list[i])
 
             # Clip Gradients
             if kwarg['clip_gvs']:
@@ -550,6 +560,11 @@ class TFModel():
         me_list = [np.mean(x) for x in me_list]
 
         return me_list
+
+    def iter_do(self, epoch):
+        '''Do some customized job during training, e.g., evaluation and output. default doing nothing.
+        '''
+        pass
 
     def fit(self, dataset, **kwarg):
         '''Train the model on given dataset.
@@ -712,6 +727,9 @@ class TFModel():
                             if kwarg['verbose'] < 1:
                                 print('Early stop.')
                             break
+
+                # Customized Task
+                self.iter_do(epoch)
             
             # Final Test
             self.load('model/'+kwarg['model_name']+version+'/model')
