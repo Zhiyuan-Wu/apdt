@@ -12,3 +12,4 @@ from apdt.ml.tf_model import cnn1d_weight, cnn1d, cnn2d_weight, cnn2d
 from apdt.ml.tf_model import Transformer_weight, Transformer
 from apdt.ml.tf_model import _WaveNet
 from apdt.ml.utils import stacked_window, batch_norm, layer_norm
+from apdt.ml.special_dataset import sin_regression

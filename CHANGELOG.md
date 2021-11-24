@@ -11,6 +11,7 @@
 - TFModel 支持重载 update 方法构造复杂的优化过程
 - TFModel 增加优化器选择：Adam, RMSProp
 - TFModel 增加 iter_do 方法，在优化过程中执行指定操作
+- 增加 sin_regression 数据集
 
 #### V0.1.7
 - 增加 alz.moving_prediction 方法
