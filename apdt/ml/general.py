@@ -631,16 +631,16 @@ class TFModel():
             if not os.path.exists('model/'):
                 os.mkdir('model/')
             while 1:
-                version = time.strftime('%Y%m%d_%H%M%S')
+                self.version = time.strftime('%Y%m%d_%H%M%S')
                 try:
-                    model_path = 'model/' + kwarg['model_name'] + version
+                    model_path = 'model/' + kwarg['model_name'] + self.version
                     os.mkdir(model_path)
                     if self.summary_merged is not None:
                         self.summary_writer = tf.summary.FileWriter(model_path + '/log', self.sess.graph)
                         summary_counter = 0
                     break
                 except FileExistsError:
-                    time.sleep(1)           
+                    time.sleep(1)
             lr = float(kwarg['lr'])
             if kwarg['higher_better']:
                 performance_recorder = -1e10
@@ -687,20 +687,20 @@ class TFModel():
                     train_me = [np.mean(m) for m in train_me]
                     if kwarg['print_type']=='metric':
                         for _i in range(len(self.metric)):
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(train_me[_i],4))
+                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(train_me[_i],4))
                     elif kwarg['print_type']=='loss':
-                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+                        print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
                     else:
-                        print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+                        print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
                         for _i,_x in enumerate(train_me):
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(_x,4))
+                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(_x,4))
                 
                 # learning_rate_decay
                 if kwarg['lr_annealing']=='step':
                     if (epoch+1)%kwarg['lr_annealing_step_length'] == 0:
                             lr = lr/kwarg['lr_annealing_step_divisor']
                             if kwarg['verbose'] < 1:
-                                print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
+                                print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
                 elif kwarg['lr_annealing']=='cosine':
                     lr = float(kwarg['lr'])*(np.cos(epoch/kwarg['epoch']*np.pi)+1.0)/2
 
@@ -710,16 +710,16 @@ class TFModel():
                     val_me = self.test(dataset, mode=kwarg['validate_on'], target='metric', batch_size=kwarg['batch_size'])
                     if kwarg['verbose'] < 1:
                         for _i,_x in enumerate(val_me):
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val '+self.metric_name[_i],round(_x,4))
+                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val '+self.metric_name[_i],round(_x,4))
 
                     # save model
                     target = val_me[0]
                     if (target < performance_recorder) ^ kwarg['higher_better']:
                         performance_recorder = target
                         epoch_recorder = epoch
-                        self.saver.save(self.sess,'model/'+kwarg['model_name']+version+'/model')
+                        self.saver.save(self.sess,'model/'+kwarg['model_name']+self.version+'/model')
                         if target < kwarg['baseline'] and kwarg['verbose'] < 1:
-                            print('['+kwarg['model_name']+version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
+                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
 
                     # Early stop
                     if kwarg['early_stop']:
@@ -732,11 +732,11 @@ class TFModel():
                 self.iter_do(epoch)
             
             # Final Test
-            self.load('model/'+kwarg['model_name']+version+'/model')
+            self.load('model/'+kwarg['model_name']+self.version+'/model')
             test_me = self.test(dataset, mode='te', target='metric', batch_size=kwarg['batch_size'])
 
             repeat_metric_set.append(test_me)
-            repeat_name_set.append(kwarg['model_name']+version)
+            repeat_name_set.append(kwarg['model_name']+self.version)
             repeat_time_set.append(time.time()-start_time)
             if kwarg['verbose'] < 2:
                 print('=======Training Summary=======')
@@ -746,7 +746,7 @@ class TFModel():
                     print('Validation metric ', performance_recorder)
                     print('Test metric ', test_me)
                 if performance_recorder < kwarg['baseline']:
-                    print('Best Model saved as: ', 'model/'+kwarg['model_name']+version+'/model')
+                    print('Best Model saved as: ', 'model/'+kwarg['model_name']+self.version+'/model')
 
             # Here ends a repeat.
         

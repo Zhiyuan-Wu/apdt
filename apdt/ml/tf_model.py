@@ -127,7 +127,7 @@ def cnn2d(input, weights=None, name='cnn2d', **kwarg):
 
     N, W, H, D = map(lambda x: x.value, input.shape)
     if weights is None:
-        weights = cnn1d_weight(name=name, input_dim=D, n_hidden=kwarg['n_hidden'], n_layers=kwarg['n_layers'], output_dim=kwarg['output_dim'], input_size=[W, H], conv_width=5, pooling_k=kwarg['pooling_k'])
+        weights = cnn2d_weight(name=name, input_dim=D, n_hidden=kwarg['n_hidden'], n_layers=kwarg['n_layers'], output_dim=kwarg['output_dim'], input_size=[W, H], conv_width=5, pooling_k=kwarg['pooling_k'])
     else:
         kwarg['n_layers'] = len([0 for x in weights.keys() if x.startswith('w_')])
 
