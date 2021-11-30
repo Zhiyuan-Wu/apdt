@@ -397,6 +397,8 @@ class TFModel():
             optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         elif kwarg['optimizer']=="rmsprop":
             optimizer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate)
+        elif kwarg['optimizer']=="sgd":
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
         
         # Compute Gradient
         gvs = []
@@ -431,12 +433,14 @@ class TFModel():
     def load(self, path):
         self.saver.restore(self.sess, save_path=path)
 
-    def update(self, feed_dict):
+    def update(self, feed_dict, epoch):
         '''Apply an update on network based on given feed_dict and return statistics. This function optimize the first given loss (self.loss[0]). In case of multiple loss defined, you may reload this function for customized optimization procedure.
         Parameters
         ----------
             feed_dict, dict
                 a dictionary that maps all necessary input tensor to their input value 
+            epoch, int
+                the epoch number of current update, useful when use dynamic update algorithm.
         
         Returns
         ----------
@@ -670,7 +674,7 @@ class TFModel():
                         feed_dict = {self.learning_rate: lr, self.training: True, self.training_process: float((epoch+1)/kwarg['epoch']), self.input: batch}
                     # _re is a list of list. _re[0] is list of self.loss; _re[1+k] is list of metric[k];
                     # _re[1+K] is list of summary record (if defined). 
-                    _re = self.update(feed_dict)
+                    _re = self.update(feed_dict, epoch)
                     ls = np.mean(_re[0])
                     train_ls.append(ls)
                     for _i in range(len(self.metric)):
