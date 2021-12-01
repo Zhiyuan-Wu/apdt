@@ -691,20 +691,20 @@ class TFModel():
                     train_me = [np.mean(m) for m in train_me]
                     if kwarg['print_type']=='metric':
                         for _i in range(len(self.metric)):
-                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(train_me[_i],4))
+                            print("[%s] Epoch %4d / %4d, Train %s %.5g" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], self.metric_name[_i], train_me[_i]))
                     elif kwarg['print_type']=='loss':
-                        print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
+                        print("[%s] Epoch %4d / %4d, Train loss %.5g" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], train_ls))
                     else:
-                        print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train loss ',round(train_ls,4))
-                        for _i,_x in enumerate(train_me):
-                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Train '+self.metric_name[_i],round(_x,4))
+                        print("[%s] Epoch %4d / %4d, Train loss %.5g" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], train_ls))
+                        for _i in range(len(self.metric)):
+                            print("[%s] Epoch %4d / %4d, Train %s %.5g" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], self.metric_name[_i], train_me[_i]))
                 
                 # learning_rate_decay
                 if kwarg['lr_annealing']=='step':
                     if (epoch+1)%kwarg['lr_annealing_step_length'] == 0:
                             lr = lr/kwarg['lr_annealing_step_divisor']
                             if kwarg['verbose'] < 1:
-                                print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],', Learning rate decay to ',lr)
+                                print("[%s] Epoch %4d / %4d, Learning rate decay to %.5g" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], lr))
                 elif kwarg['lr_annealing']=='cosine':
                     lr = float(kwarg['lr'])*(np.cos(epoch/kwarg['epoch']*np.pi)+1.0)/2
 
@@ -714,7 +714,7 @@ class TFModel():
                     val_me = self.test(dataset, mode=kwarg['validate_on'], target='metric', batch_size=kwarg['batch_size'])
                     if kwarg['verbose'] < 1:
                         for _i,_x in enumerate(val_me):
-                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Done, Val '+self.metric_name[_i],round(_x,4))
+                            print("[%s] Epoch %4d / %4d, Val %s %.5g" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], self.metric_name[_i], _x))
 
                     # save model
                     target = val_me[0]
@@ -722,8 +722,8 @@ class TFModel():
                         performance_recorder = target
                         epoch_recorder = epoch
                         self.saver.save(self.sess,'model/'+kwarg['model_name']+self.version+'/model')
-                        if target < kwarg['baseline'] and kwarg['verbose'] < 1:
-                            print('['+kwarg['model_name']+self.version+']epoch ',epoch,'/',kwarg['epoch'],' Model Save Success. New record ',target)
+                        if kwarg['verbose'] < 1:
+                            print("[%s] Epoch %4d / %4d, Model Save Success. New record %f" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], target))
 
                     # Early stop
                     if kwarg['early_stop']:
@@ -749,7 +749,6 @@ class TFModel():
                     print('Best model at epoch ', epoch_recorder, ', with:')
                     print('Validation metric ', performance_recorder)
                     print('Test metric ', test_me)
-                if performance_recorder < kwarg['baseline']:
                     print('Best Model saved as: ', 'model/'+kwarg['model_name']+self.version+'/model')
 
             # Here ends a repeat.
