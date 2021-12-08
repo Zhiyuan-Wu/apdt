@@ -110,6 +110,7 @@ def _unzip_list(nested):
 
 def stacked_window(x, width, shift=0):
     '''Compute moving stacked window on a given time series.
+
     Parameters
     ------
         x, tensor
@@ -137,3 +138,31 @@ def stacked_window(x, width, shift=0):
     result = tf.reshape(result, [N, D, T, width])
     result = tf.transpose(result, [0, 2, 3, 1])
     return result
+
+def pearson_corr(x, y, axis=-1, keepdims=True):
+    ''' Compute the pearson correlation coefficient.
+
+    Parameters
+    ------
+        x, tensor
+            the first input tensor
+        y, tensor
+            the second input tensor
+        axis, int, default -1
+            along which index to compute correlation
+        keepdims, bool, default True
+            if keep corresponding dim.
+    Returns
+    ------
+        tensor
+            output stacked time series of shape [batch_size, time_length, width, feature_dim]
+    '''
+    x_mean = tf.reduce_mean(x, axis=axis, keepdims=True)
+    y_mean = tf.reduce_mean(y, axis=axis, keepdims=True)
+    x_norm = tf.sqrt(tf.reduce_sum((x-x_mean)**2, axis=axis, keepdims=True) + 1e-8)
+    y_norm = tf.sqrt(tf.reduce_sum((y-y_mean)**2, axis=axis, keepdims=True) + 1e-8)
+    _x = (x - x_mean) / x_norm
+    _y = (y - y_mean) / y_norm
+    corr = tf.reduce_sum(_x*_y, axis=axis, keepdims=keepdims)
+
+    return corr
