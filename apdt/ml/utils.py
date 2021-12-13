@@ -118,8 +118,12 @@ def stacked_window(x, width, shift=0):
         width, int
             window width
         shift, int, default 0
-            decide the index of given time stamp in the output. For example, if shift=0, then x[1, 2, 3] will show at result[1, 2, 0, 3]
-            minus value is also supported.
+            decide the index of given time stamp in the output.
+            For example, for x = [1,2,3,4], width = 3, and
+                shift = 0, output will be [[1,2,3], [2,3,4], [3,4,0], [4,0,0]];
+                shift = 1, output will be [[0,1,2], [1,2,3], [2,3,4], [3,4,0]];
+                shift = -1,output will be [[2,3,4], [3,4,0], [4,0,0], [0,0,0]].
+
     Returns
     ------
         tensor
@@ -155,7 +159,7 @@ def pearson_corr(x, y, axis=-1, keepdims=True):
     Returns
     ------
         tensor
-            output stacked time series of shape [batch_size, time_length, width, feature_dim]
+            output tensor
     '''
     x_mean = tf.reduce_mean(x, axis=axis, keepdims=True)
     y_mean = tf.reduce_mean(y, axis=axis, keepdims=True)
@@ -166,3 +170,33 @@ def pearson_corr(x, y, axis=-1, keepdims=True):
     corr = tf.reduce_sum(_x*_y, axis=axis, keepdims=keepdims)
 
     return corr
+
+def median(x, axis=-1, keepdims=True):
+    ''' Compute the median number.
+
+    Parameters
+    ------
+        x, tensor
+            the first input tensor
+        axis, int, default -1
+            along which dim to compute
+        keepdims, bool, default True
+            if keep corresponding dim.
+    Returns
+    ------
+        tensor
+            output tensor
+    '''
+    shape = list(map(int, x.shape))
+    axis = axis % len(shape)
+    med_num = shape[axis]//2+1
+    _x = tf.transpose(x, [i for i in range(len(shape)) if i != axis] + [axis])
+    med = tf.nn.top_k(_x, k=med_num).values
+    if shape[axis] % 2 == 0:
+        med = (med[..., -1] + med[..., -2]) / 2
+    else:
+        med = med[..., -1]
+    if keepdims:
+        med = tf.expand_dims(med, axis)
+    
+    return med

@@ -2,6 +2,7 @@
 
 #### V0.1.9_dev
 - 增加 ml.pearson_corr 方法
+- 增加 ml.median 方法
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN
