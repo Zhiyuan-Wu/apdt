@@ -143,7 +143,7 @@ def stacked_window(x, width, shift=0):
     result = tf.transpose(result, [0, 2, 3, 1])
     return result
 
-def pearson_corr(x, y, axis=-1, keepdims=True):
+def pearson_corr(x, y, axis=-1, keepdims=False):
     ''' Compute the pearson correlation coefficient.
 
     Parameters
@@ -154,7 +154,7 @@ def pearson_corr(x, y, axis=-1, keepdims=True):
             the second input tensor
         axis, int, default -1
             along which index to compute correlation
-        keepdims, bool, default True
+        keepdims, bool, default False
             if keep corresponding dim.
     Returns
     ------
@@ -171,7 +171,7 @@ def pearson_corr(x, y, axis=-1, keepdims=True):
 
     return corr
 
-def median(x, axis=-1, keepdims=True):
+def median(x, axis=-1, keepdims=False):
     ''' Compute the median number.
 
     Parameters
@@ -180,7 +180,7 @@ def median(x, axis=-1, keepdims=True):
             the first input tensor
         axis, int, default -1
             along which dim to compute
-        keepdims, bool, default True
+        keepdims, bool, default False
             if keep corresponding dim.
     Returns
     ------
