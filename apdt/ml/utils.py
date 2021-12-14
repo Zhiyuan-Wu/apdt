@@ -171,8 +171,36 @@ def pearson_corr(x, y, axis=-1, keepdims=False):
 
     return corr
 
+def percentile(x, percentile=50, axis=-1, keepdims=False):
+    ''' Compute the percentile number. return a nearest member at target percentile position.
+
+    Parameters
+    ------
+        x, tensor
+            the first input tensor
+        percentile, int, default 50
+            the percentile number between 0 and 100
+        axis, int, default -1
+            along which dim to compute
+        keepdims, bool, default False
+            if keep corresponding dim.
+    Returns
+    ------
+        tensor
+            output tensor
+    '''
+    shape = list(map(int, x.shape))
+    axis = axis % len(shape)
+    med_num = round((shape[axis] - 1) * (percentile/100.0))
+    _x = tf.transpose(x, [i for i in range(len(shape)) if i != axis] + [axis])
+    med = tf.nn.top_k(_x, k=shape[axis]-med_num).values[..., -1]
+    if keepdims:
+        med = tf.expand_dims(med, axis)
+    
+    return med
+
 def median(x, axis=-1, keepdims=False):
-    ''' Compute the median number.
+    ''' Compute the median number. different from percentile, this function will return average of middle two elements if total number is even.
 
     Parameters
     ------
