@@ -3,6 +3,8 @@
 #### V0.1.9_dev
 - 增加 ml.pearson_corr 方法
 - 增加 ml.median 和 ml.percentile 方法
+- 增加高斯KDE方法 alz.kde_gauss_density_estimator
+- 增加若干估计高斯KDE核参数的方法
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN
