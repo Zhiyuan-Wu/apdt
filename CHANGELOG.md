@@ -5,6 +5,7 @@
 - 增加 ml.median 和 ml.percentile 方法
 - 增加高斯KDE方法 alz.kde_gauss_density_estimator
 - 增加若干估计高斯KDE核参数的方法
+- TFModel.fit() 增加 unzip 参数，提供不同的处理列表数据输入的方式
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN

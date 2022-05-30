@@ -227,6 +227,13 @@ class DataSet():
         return batch
 
     def post_process(self, batch, **kwarg):
+        '''Define the action on post_process of batches from dataset, default doing nothing.
+
+        Parameters
+        ------
+            batch, tensor
+            mode, in ['train, 'validate', 'test]
+        '''
         return batch
 
     def MNIST(self, **kwarg):
@@ -298,6 +305,7 @@ class TFModel():
             - early_stop=None. int. Stop training if there is no better validation result since last recorder. This parameter decides the waiting epoch number. If None this feature will be disabled.
             - repeat=1. int. If set >1, we will randomly reset parameters and retrain the model for certain times, and compute statistical performance.
             - verbose=0. int. The verbose level. 0-print all. 1-only summary. 2-mute.
+            - unzip="cartesian". str. decide how to treat list input from dataset. optional: "cartesian" (return a cartesian product of all list), "parallel" (combine list members in order)
     '''
     def __init__(self, **kwarg):
         # Parameter Check
@@ -433,7 +441,7 @@ class TFModel():
     def load(self, path):
         self.saver.restore(self.sess, save_path=path)
 
-    def update(self, feed_dict, epoch):
+    def update(self, feed_dict, epoch, unzip):
         '''Apply an update on network based on given feed_dict and return statistics. This function optimize the first given loss (self.loss[0]). In case of multiple loss defined, you may reload this function for customized optimization procedure.
         Parameters
         ----------
@@ -441,6 +449,8 @@ class TFModel():
                 a dictionary that maps all necessary input tensor to their input value 
             epoch, int
                 the epoch number of current update, useful when use dynamic update algorithm.
+            unzip, str
+                how to treat list input from dataset.
         
         Returns
         ----------
@@ -452,7 +462,7 @@ class TFModel():
         target = [self.train_op[0], self.loss[0]] + self.metric
         if self.summary_merged is not None:
             target = target + [self.summary_merged]
-        _re = self._zip_run(target, feed_dict)
+        _re = self._zip_run(target, feed_dict, mode=unzip)
         _re = _unzip_list(_re)
         return _re[1:]
 
@@ -465,7 +475,7 @@ class TFModel():
         result = self.sess.run(self.pred, feed_dict)
         return result
 
-    def _zip_run(self, target, feed_dict, _r=0):
+    def _zip_run(self, target, feed_dict, mode='cartesian', _r=0):
         '''Recurrently unzip lists in feed_dict to generate samples.
         Description
         -----------
@@ -477,6 +487,10 @@ class TFModel():
                 the tensorflow tensor to be evaluated.
             feed_dict, dict
                 the feed data, list values supported.
+            mode, str, default 'cartesian'
+                the unzip method, optional: "cartesian" (return a cartesian product of all list), "parallel" (combine list members in order)
+            _r, int
+                private variable for recursive purpose, set this larger than 0 will skip first _r elements in feed_dict
         
         Returns
         ----------
@@ -486,19 +500,34 @@ class TFModel():
         ----------
             If we run self._zip_run(self.loss, {imput:[x1,x2]}) it is equivalent to do: [self.session.run(self.loss, {input: x}) for x in [x1,x2]]
         '''
-        if _r == len(feed_dict.keys()):
-            return self.sess.run(target, feed_dict)
-        else:
-            if type(list(feed_dict.values())[_r]) is list:
-                _result = []
-                for i in range(len(list(feed_dict.values())[_r])):
-                    _temp_dict = feed_dict.copy()
-                    _temp_dict[list(feed_dict.keys())[_r]] = list(feed_dict.values())[_r][i]
-                    # change _r+1 to _r to support multi-level lists.
-                    _result.append(self._zip_run(target, _temp_dict, _r+1))
-                return _result
+        if mode=='cartesian':
+            if _r == len(feed_dict.keys()):
+                return self.sess.run(target, feed_dict)
             else:
-                return self._zip_run(target, feed_dict, _r+1)
+                if type(list(feed_dict.values())[_r]) is list:
+                    _result = []
+                    for i in range(len(list(feed_dict.values())[_r])):
+                        _temp_dict = feed_dict.copy()
+                        _temp_dict[list(feed_dict.keys())[_r]] = list(feed_dict.values())[_r][i]
+                        # change _r+1 to _r to support multi-level lists.
+                        _result.append(self._zip_run(target, _temp_dict, mode, _r=_r+1))
+                    return _result
+                else:
+                    return self._zip_run(target, feed_dict, mode, _r=_r+1)
+        elif mode=='parallel':
+            level = [(i, len(list(feed_dict.values())[i])) for i in range(len(feed_dict.keys())) if type(list(feed_dict.values())[i]) is list]
+            if len(level)==0:
+                return self.sess.run(target, feed_dict)
+            else:
+                _result = []
+                for i in range(min([x[1] for x in level])):
+                    _temp_dict = feed_dict.copy()
+                    for j,_ in level:
+                        _temp_dict[list(feed_dict.keys())[j]] = list(feed_dict.values())[j][i]
+                    _result.append(self.sess.run(target, _temp_dict))
+                return _result
+        else:
+            raise Exception("unexpected unzip method " + mode)
 
     def test(self, dataset, **kwarg):
         '''Test the model on given dataset.
@@ -522,6 +551,8 @@ class TFModel():
             kwarg['mode'] = 'te'
         if 'target' not in kwarg.keys():
             kwarg['target'] = 'metric'
+        if 'unzip' not in kwarg.keys():
+            kwarg['unzip'] = 'cartesian'
         if 'batch_size' not in kwarg.keys():
             kwarg['batch_size'] = 1
         if kwarg['batch_size'] > min(dataset.tr_batch_num, dataset.val_batch_num, dataset.te_batch_num):
@@ -556,7 +587,7 @@ class TFModel():
             else:
                 feed_dict = {self.learning_rate: 0.0, self.training: False, self.training_process: 0.0, self.input: batch}
             # ls = self.sess.run(self.loss, feed_dict)
-            _re = self._zip_run(target, feed_dict)
+            _re = self._zip_run(target, feed_dict, mode=kwarg['unzip'])
             _re = _unzip_list(_re)
             for _i in range(len(target)):
                 me = np.mean(_re[_i])
@@ -625,7 +656,8 @@ class TFModel():
             kwarg['validate_on'] = 'val'
         if 'higher_better' not in kwarg.keys():
             kwarg['higher_better'] = False
-
+        if 'unzip' not in kwarg.keys():
+            kwarg['unzip'] = 'cartesian'
 
         repeat_name_set = []
         repeat_metric_set = []
@@ -674,7 +706,7 @@ class TFModel():
                         feed_dict = {self.learning_rate: lr, self.training: True, self.training_process: float((epoch+1)/kwarg['epoch']), self.input: batch}
                     # _re is a list of list. _re[0] is list of self.loss; _re[1+k] is list of metric[k];
                     # _re[1+K] is list of summary record (if defined). 
-                    _re = self.update(feed_dict, epoch)
+                    _re = self.update(feed_dict, epoch, unzip=kwarg['unzip'])
                     ls = np.mean(_re[0])
                     train_ls.append(ls)
                     for _i in range(len(self.metric)):
@@ -711,7 +743,7 @@ class TFModel():
                 # validate
                 if (epoch+1)%kwarg['val_every_n_epochs'] == 0:
                     # validate
-                    val_me = self.test(dataset, mode=kwarg['validate_on'], target='metric', batch_size=kwarg['batch_size'])
+                    val_me = self.test(dataset, mode=kwarg['validate_on'], target='metric', batch_size=kwarg['batch_size'], unzip=kwarg['unzip'])
                     if kwarg['verbose'] < 1:
                         for _i,_x in enumerate(val_me):
                             print("[%s] Epoch %4d / %4d, Val %s %.5g" % (kwarg['model_name']+self.version, epoch, kwarg['epoch'], self.metric_name[_i], _x))
@@ -737,7 +769,7 @@ class TFModel():
             
             # Final Test
             self.load('model/'+kwarg['model_name']+self.version+'/model')
-            test_me = self.test(dataset, mode='te', target='metric', batch_size=kwarg['batch_size'])
+            test_me = self.test(dataset, mode='te', target='metric', batch_size=kwarg['batch_size'], unzip=kwarg['unzip'])
 
             repeat_metric_set.append(test_me)
             repeat_name_set.append(kwarg['model_name']+self.version)
