@@ -6,6 +6,9 @@
 - 增加高斯KDE方法 alz.kde_gauss_density_estimator
 - 增加若干估计高斯KDE核参数的方法
 - TFModel.fit() 增加 unzip 参数，提供不同的处理列表数据输入的方式
+- 增加 plt.logloader，从repeat日志中自动提取实验结果字段
+- ml.cnn1d 支持选择输出等长序列或压缩特征
+- ml.cnn1d 支持 dilation
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN

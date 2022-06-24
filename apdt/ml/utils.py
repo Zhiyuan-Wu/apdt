@@ -228,3 +228,39 @@ def median(x, axis=-1, keepdims=False):
         med = tf.expand_dims(med, axis)
     
     return med
+
+def KL_diagonal_gaussian(mu1, sigma1, mu2, sigma2, axis=-1, keepdims=False):
+    ''' [tensorflow] Compute the KL-Divergence between two diagonal gaussian:
+
+    KL[p1||p2] = 1/2 * {log(det(sigma2)/det(sigma1)) - d + tr(sigma2^(-1)sigma1) + (mu2-mu1)'sigma2^(-1)(mu2-mu1)}
+
+    Parameters
+    ------
+        mu1, mu2, tensor
+            the mean vector of gaussian, mu2 and sigma2 can be given as scalar constant (which will be boardcasted)
+        sigma1, sigma2, tensor
+            the diagonal sigma of gaussian, not covariance (which is considered to be sigma**2)
+        axis , int, default -1
+            along which axis to operate
+        keepdims, bool, default False
+            if keep corresponding dim.
+    Returns
+    ------
+        tensor
+            output tensor
+    '''
+    
+    if type(mu2) is int or type(mu2) is float:
+        mu2 = tf.zeros_like(mu1) + mu2
+    if type(sigma2) is int or type(sigma2) is float:
+        sigma2 = tf.zeros_like(sigma1) + sigma2
+
+    shape = list(map(int, mu1.shape))
+    axis = axis % len(shape)
+    term1 = tf.reduce_sum(2*tf.log(sigma2), axis=axis, keepdims=keepdims) - tf.reduce_sum(2*tf.log(sigma1), axis=axis, keepdims=keepdims)
+    term2 = shape[axis]
+    term3 = tf.reduce_sum((sigma1/sigma2)**2, axis=axis, keepdims=keepdims)
+    term4 = tf.reduce_sum((mu2 - mu1)**2/(sigma2**2), axis=axis, keepdims=keepdims)
+    kl = 1/2 * (term1 - term2 + term3 + term4)
+
+    return kl

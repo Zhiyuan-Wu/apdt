@@ -11,5 +11,6 @@ from apdt import io
 from apdt import alz
 from apdt import proc
 from apdt import ml
+from apdt import plt
 
 __version__ = '0.1.8'
