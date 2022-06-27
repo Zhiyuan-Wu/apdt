@@ -256,6 +256,7 @@ def cnn1d(input, weights=None, name='cnn1d', **kwarg):
             the pooling window size.
         dialations: int, default None
             if set to larger than 1, there will be k-1 skipped cells between each filter element on that dimension.
+            if given a list, they will be apllied layer-wise.
             only avaliable in tf==1.15.0, otherwise set this to None and disable it.
         name: str
             Optional scope for `variable_scope`.
@@ -288,6 +289,8 @@ def cnn1d(input, weights=None, name='cnn1d', **kwarg):
         weights = cnn1d_weight(name=name, input_dim=D, n_hidden=kwarg['n_hidden'], n_layers=kwarg['n_layers'], output_dim=kwarg['output_dim'], input_length=T, conv_width=5, pooling_k=kwarg['pooling_k'])
     else:
         kwarg['n_layers'] = len([0 for x in weights.keys() if x.startswith('w_')])
+    if type(kwarg['dialations']) is int:
+        kwarg['dialations'] = [kwarg['dialations']]*kwarg['n_layers']
 
     with tf.variable_scope(name):
         h = input
@@ -295,7 +298,7 @@ def cnn1d(input, weights=None, name='cnn1d', **kwarg):
             w = weights['w_'+str(i)]
             b = weights['b_'+str(i)]
             if kwarg['dialations'] is not None:
-                h = tf.nn.conv1d(h, w, 1, 'SAME',dilations=kwarg['dialations']) + b
+                h = tf.nn.conv1d(h, w, 1, 'SAME',dilations=kwarg['dialations'][i]) + b
             else:
                 h = tf.nn.conv1d(h, w, 1, 'SAME') + b
             h = kwarg['activation'](h)
@@ -682,6 +685,8 @@ def mlp_weight(**kwarg):
     ---------
         name: str
             the variable name scope to be used.
+        prefix: str, default ""
+            the prefix to weight keys. useful when you want to conbine two different weight dict.
         input_dim: int, default 10
             the number of input neurals
         output_dim: int, default 10
@@ -695,6 +700,8 @@ def mlp_weight(**kwarg):
     '''
     if 'name' not in kwarg:
         kwarg['name'] = 'mlp'
+    if 'prefix' not in kwarg:
+        kwarg['prefix'] = ''
     if 'input_dim' not in kwarg:
         kwarg['input_dim'] = 10
     if 'output_dim' not in kwarg:
@@ -709,11 +716,12 @@ def mlp_weight(**kwarg):
     with tf.variable_scope(kwarg['name']):
         hn = kwarg['input_dim']
         for i in range(len(kwarg['n_hidden'])):
-            w['weight'+str(i)] = tf.get_variable('weight'+str(i),[hn, kwarg['n_hidden'][i]],initializer=_init, trainable=kwarg['trainable'])
-            w['bias'+str(i)] = tf.get_variable('bias'+str(i),[kwarg['n_hidden'][i],],initializer=_init, trainable=kwarg['trainable'])
+            w[kwarg['prefix']+'weight'+str(i)] = tf.get_variable('weight'+str(i),[hn, kwarg['n_hidden'][i]],initializer=_init, trainable=kwarg['trainable'])
+            w[kwarg['prefix']+'bias'+str(i)] = tf.get_variable('bias'+str(i),[kwarg['n_hidden'][i],],initializer=_init, trainable=kwarg['trainable'])
             hn = kwarg['n_hidden'][i]
-        w['weightout'] = tf.get_variable('weightout',[hn, kwarg['output_dim']],initializer=_init, trainable=kwarg['trainable'])
-        w['biasout'] = tf.get_variable('biasout',[kwarg['output_dim'],],initializer=_init, trainable=kwarg['trainable'])
+        w[kwarg['prefix']+'weightout'] = tf.get_variable('weightout',[hn, kwarg['output_dim']],initializer=_init, trainable=kwarg['trainable'])
+        # We use biasout to encode number of layers.
+        w[kwarg['prefix']+'biasout'+'__LAYERNUM'+str(len(kwarg['n_hidden']))] = tf.get_variable('biasout',[kwarg['output_dim'],],initializer=_init, trainable=kwarg['trainable'])
     
     return w
 
@@ -742,6 +750,10 @@ def MLP(input, n_layers=None, output_dim=None, n_hidden=None, weights=None, name
             if apply batch norm on hidden layers. reuse not supported now.
         training_flag: tensor
             required if bn is True
+        name: str
+            the variable name scope to be used.
+        prefix: str, default ""
+            the prefix to weight keys. useful when you want to conbine two different weight dict.
     Return
     ------
         tensor
@@ -751,23 +763,6 @@ def MLP(input, n_layers=None, output_dim=None, n_hidden=None, weights=None, name
         Dropout is still not available now, because it shoule support automatic switch with training/testing condition.
         BN is not supported now.
     '''
-    
-    if weights is None:
-        if n_layers is None:
-            n_layers = 2
-        if output_dim is None:
-            output_dim = 10
-        if n_hidden is None:
-            n_hidden = [128]*n_layers
-        if type(n_hidden) is int:
-            n_hidden = [n_hidden]*n_layers
-        weights = mlp_weight(name=name,input_dim=input.shape[-1].value,output_dim=output_dim,n_hidden=n_hidden)
-    else:
-        if n_layers is None:
-            n_layers = len(weights.keys())//2 - 1
-        if output_dim is None:
-            output_dim = weights['biasout'].shape[0].value
-
     if 'activation' not in kwarg:
         kwarg['activation'] = tf.nn.relu
     if 'activation_kwarg' not in kwarg:
@@ -780,20 +775,37 @@ def MLP(input, n_layers=None, output_dim=None, n_hidden=None, weights=None, name
         kwarg['bn'] = False
     if 'training_flag' not in kwarg:
         kwarg['training_flag'] = None
+    if 'prefix' not in kwarg:
+        kwarg['prefix'] = ''
+
+    if weights is None:
+        if n_layers is None:
+            n_layers = 2
+        if output_dim is None:
+            output_dim = 10
+        if n_hidden is None:
+            n_hidden = [128]*n_layers
+        if type(n_hidden) is int:
+            n_hidden = [n_hidden]*n_layers
+        weights = mlp_weight(name=name,input_dim=input.shape[-1].value,output_dim=output_dim,n_hidden=n_hidden,prefix=kwarg['prefix'])
+    else:
+        if n_layers is None:
+            for _weight_key in weights.keys():
+                if _weight_key.startswith(kwarg['prefix']+'biasout'+'__LAYERNUM'):
+                    n_layers = int(_weight_key[len(kwarg['prefix']+'biasout'+'__LAYERNUM'):])
+                    break
     
     with tf.variable_scope(name):
         x = input
         for i in range(n_layers):
-            x = tf.tensordot(x, weights['weight'+str(i)], 1) + weights['bias'+str(i)]
+            x = tf.tensordot(x, weights[kwarg['prefix']+'weight'+str(i)], 1) + weights[kwarg['prefix']+'bias'+str(i)]
             if kwarg['bn']:
                 x = batch_norm(x, kwarg['training_flag'], name='bn'+str(i))
             x = kwarg['activation'](x, **kwarg['activation_kwarg'])
             if kwarg['dropout']:
                 x = tf.nn.dropout(x, kwarg['dropout_ratio'])
-        x = tf.tensordot(x, weights['weightout'], 1) + weights['biasout']
+        x = tf.tensordot(x, weights[kwarg['prefix']+'weightout'], 1) + weights[kwarg['prefix']+'biasout'+'__LAYERNUM'+str(n_layers)]
     return x
-    
-    
 
 def wavenet_weight(**kwarg):
     '''Construct weight for wavenet.

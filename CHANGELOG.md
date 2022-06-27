@@ -9,6 +9,8 @@
 - 增加 plt.logloader，从repeat日志中自动提取实验结果字段
 - ml.cnn1d 支持选择输出等长序列或压缩特征
 - ml.cnn1d 支持 dilation
+- 为 ml.MLP 增加 prefix 参数
+- 优化了 ml.MLP 从参数中推断网络深度的逻辑
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN
