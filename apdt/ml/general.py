@@ -5,6 +5,7 @@ import os
 import time
 import apdt
 import pickle
+import scipy.stats
 from apdt.ml.utils import _unzip_list
 
 try:
@@ -304,6 +305,7 @@ class TFModel():
             - lr_annealing_step_divisor=2.0. float. Avaliable when lr_annealing is set to 'step', we will apply lr=lr/lr_annealing_step_divisor to slow down the training process.
             - early_stop=None. int. Stop training if there is no better validation result since last recorder. This parameter decides the waiting epoch number. If None this feature will be disabled.
             - repeat=1. int. If set >1, we will randomly reset parameters and retrain the model for certain times, and compute statistical performance.
+            - rstat='pred'. str. The type of reported repeat statistics. 'pred': gaussian 95% predictive interval. 't': student-t 95% confidence interval
             - verbose=0. int. The verbose level. 0-print all. 1-only summary. 2-mute.
             - unzip="cartesian". str. decide how to treat list input from dataset. optional: "cartesian" (return a cartesian product of all list), "parallel" (combine list members in order)
     '''
@@ -650,6 +652,8 @@ class TFModel():
             kwarg['early_stop'] = None
         if 'repeat' not in kwarg.keys():
             kwarg['repeat'] = 1
+        if 'rstat' not in kwarg.keys():
+            kwarg['rstat'] = 'pred'
         if 'verbose' not in kwarg.keys():
             kwarg['verbose'] = 0
         if 'validate_on' not in kwarg.keys():
@@ -789,6 +793,11 @@ class TFModel():
         if kwarg['repeat'] > 1:
             test_ls_mean = np.mean(repeat_metric_set, 0)
             test_ls_std = np.std(repeat_metric_set, 0)
+            if kwarg['rstat']=='pred':
+                test_ls_ci = test_ls_std * 1.96
+            elif kwarg['rstat']=='t':
+                sem = test_ls_std / np.sqrt(kwarg['repeat'] - 1)
+                test_ls_ci = scipy.stats.t.ppf(0.975, kwarg['repeat'] - 1) * sem
             total_time = np.sum(repeat_time_set)
             if kwarg['verbose'] < 2:
                 print('=======Repeat Summary=======')
@@ -798,7 +807,7 @@ class TFModel():
                 print('Test loss: ', repeat_metric_set)
                 for _i in range(len(self.metric)):
                     print('Average '+self.metric_name[_i], test_ls_mean[_i])
-                    print('95 confidence interval: ', test_ls_std[_i]*1.96, '(',test_ls_mean[_i]-test_ls_std[_i]*1.96,'~',test_ls_mean[_i]+test_ls_std[_i]*1.96,')')
+                    print('95 confidence interval: ', test_ls_ci[_i], '(',test_ls_mean[_i]-test_ls_ci[_i],'~',test_ls_mean[_i]+test_ls_ci[_i],')')
 
         if kwarg['verbose'] < 1:
             print('Done.')            

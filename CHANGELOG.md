@@ -3,7 +3,7 @@
 #### V0.1.9_dev
 - 增加 ml.pearson_corr 方法
 - 增加 ml.median 和 ml.percentile 方法
-- 增加高斯KDE方法 alz.kde_gauss_density_estimator
+- 增加高斯 KDE 方法 alz.kde_gauss_density_estimator
 - 增加若干估计高斯KDE核参数的方法
 - TFModel.fit() 增加 unzip 参数，提供不同的处理列表数据输入的方式
 - 增加 plt.logloader，从repeat日志中自动提取实验结果字段
@@ -11,6 +11,7 @@
 - ml.cnn1d 支持 dilation
 - 为 ml.MLP 增加 prefix 参数
 - 优化了 ml.MLP 从参数中推断网络深度的逻辑
+- TFModel 增加 Student-t Test
 
 #### V0.1.8
 - ml.TFModel 增加 1-D CNN
