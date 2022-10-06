@@ -13,4 +13,4 @@ from apdt.ml.tf_model import Transformer_weight, Transformer
 from apdt.ml.tf_model import _WaveNet
 from apdt.ml.tf_model2 import deepsets_weight, deepsets
 from apdt.ml.utils import stacked_window, batch_norm, layer_norm, pearson_corr, percentile, median, KL_diagonal_gaussian
-from apdt.ml.special_dataset import sin_regression
+from apdt.ml.special_dataset import sin_regression, ContinualDataset

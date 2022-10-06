@@ -1,6 +1,9 @@
 # Change Log
 
-#### V0.1.9_dev
+#### V0.1.10_dev
+- 增加 ml.ContinualDataset，提供连续学习数据环境
+
+#### V0.1.9
 - 增加 ml.pearson_corr 方法
 - 增加 ml.median 和 ml.percentile 方法
 - 增加高斯 KDE 方法 alz.kde_gauss_density_estimator
