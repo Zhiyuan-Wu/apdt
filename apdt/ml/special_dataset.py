@@ -128,31 +128,37 @@ class ContinualDataset():
             self.tr = np.stack(tr_list)
             self.tr = np.transpose(self.tr, (0,2,1,3))
 
+            sample_num_per_task = self.tr.shape[0] // self._kwarg['task_num']
+            self.tr_task_label = np.arange(self.tr.shape[0])
+            self.tr_task_label = self.tr_task_label // sample_num_per_task
+
             self.seq_len = kwarg['seq_len']
             self.strides = kwarg['strides']
 
-    def get_dataset(self, idx1, idx2=None, split_ratio=None):
+    def get_dataset(self, idx1, idx2=None, split_ratio=None, task_label=False, post_process_handle=None):
         ''' Return a dataset that include samples from task idx1 (or a combined dataset from task idx1 - idx2 (include))
 
         Parameters
         -----
-            idx1: target task index, 0<=idx1<=self.task_num
+            idx1: target task index, 0<=idx1<self.task_num
             idx2: if given, task idx1 - idx2 (include both ends) will be combined into one and returned
-            split_ratio: the ratio to bu used as training set. note that this is a random split instead of split-along-time.
+            split_ratio: the ratio to be used as training set. note that this is a random split instead of split-along-time.
+            task_label: bool, if True, xx_get_batch will return a list of [batch, label] where label indicating the sample-task belonging
+            post_process_handle: callable, take batch and batch_task_label as input and return post-porcessed result
         '''
         sample_num_per_task = self.tr.shape[0] // self._kwarg['task_num']
         idx_start = idx1 * sample_num_per_task
         if idx2 is None:
             idx2 = idx1
         idx_end = (idx2 + 1) * sample_num_per_task
-        return _ContinualDataset_child(self, idx_start, idx_end, split_ratio, self._kwarg['seed'])
+        return _ContinualDataset_child(self, idx_start, idx_end, split_ratio=split_ratio, seed=self._kwarg['seed'], task_label=task_label, post_process_handle=post_process_handle)
 
 class _ContinualDataset_child():
     '''A dataset object generated from ContinualDataset, provide basic interface same as apdt.DataSet, e.g., shuffle, get_batch.
 
     Note: This dataset use a random split of train/val instead of split-along-time
     '''
-    def __init__(self, father, idx_start, idx_end, split_ratio=None, seed=None):
+    def __init__(self, father, idx_start, idx_end, split_ratio=None, seed=None, task_label=False, post_process_handle=None):
         '''
         Parameters
         -----
@@ -161,6 +167,7 @@ class _ContinualDataset_child():
             idx_end: start sample index (exclude)
             split_ratio: the ratio of training set, rest will be used as validation. default no validation.
             seed: seed for randomness, default none.
+            task_label: bool, if True, xx_get_batch will return a list of [batch, label] where label indicating the sample-task belonging
         '''
         if split_ratio is not None:
             if seed is not None:
@@ -172,16 +179,24 @@ class _ContinualDataset_child():
             self.tr = father.tr[tr_idx]
             self.val = father.tr[val_idx]
             self.te = father.tr[idx_start: idx_end]
+            self.tr_task_label = father.tr_task_label[tr_idx]
+            self.val_task_label = father.tr_task_label[val_idx]
+            self.te_task_label = father.tr_task_label[idx_start: idx_end]
         else:
             self.tr = father.tr[idx_start: idx_end]
             self.val = father.tr[idx_start: idx_end]
             self.te = father.tr[idx_start: idx_end]
+            self.tr_task_label = father.tr_task_label[idx_start: idx_end]
+            self.val_task_label = father.tr_task_label[idx_start: idx_end]
+            self.te_task_label = father.tr_task_label[idx_start: idx_end]
 
         self.tr_batch_num = self.tr.shape[0]
         self.val_batch_num = self.val.shape[0]
         self.te_batch_num = self.te.shape[0]
 
         self._init_counter(seed=seed)
+        self._task_label = task_label
+        self.post_process = post_process_handle
 
     def _init_counter(self, **kwarg):
         if kwarg['seed'] is not None:
@@ -203,8 +218,13 @@ class _ContinualDataset_child():
         target_index = self.tr_batch_perm[self.tr_batch_counter: self.tr_batch_counter + batch_size]
         self.tr_batch_counter = self.tr_batch_counter + batch_size
         batch = self.tr[target_index]
-        batch = self.post_process(batch, mode='train')
-        return batch
+        batch_task_label = self.tr_task_label[target_index]
+        if self.post_process is not None:
+            batch, batch_task_label = self.post_process(batch=batch, batch_task_label=batch_task_label, mode='train')
+        if self._task_label:
+            return [batch, batch_task_label]
+        else:
+            return batch
 
     def val_get_batch(self, batch_size=1):
         if batch_size > self.val_batch_num:
@@ -214,8 +234,13 @@ class _ContinualDataset_child():
         target_index = self.val_batch_perm[self.val_batch_counter: self.val_batch_counter + batch_size]
         self.val_batch_counter = self.val_batch_counter + batch_size
         batch = self.val[target_index]
-        batch = self.post_process(batch, mode='validate')
-        return batch
+        batch_task_label = self.val_task_label[target_index]
+        if self.post_process is not None:
+            batch, batch_task_label = self.post_process(batch=batch, batch_task_label=batch_task_label, mode='validate')
+        if self._task_label:
+            return [batch, batch_task_label]
+        else:
+            return batch
     
     def te_get_batch(self, batch_size=1):
         if batch_size > self.te_batch_num:
@@ -225,15 +250,10 @@ class _ContinualDataset_child():
         target_index = self.te_batch_perm[self.te_batch_counter: self.te_batch_counter + batch_size]
         self.te_batch_counter = self.te_batch_counter + batch_size
         batch = self.te[target_index]
-        batch = self.post_process(batch, mode='test')
-        return batch
-
-    def post_process(self, batch, **kwarg):
-        '''Define the action on post_process of batches from dataset, default doing nothing.
-
-        Parameters
-        ------
-            batch, tensor
-            mode, in ['train, 'validate', 'test]
-        '''
-        return batch
+        batch_task_label = self.te_task_label[target_index]
+        if self.post_process is not None:
+            batch, batch_task_label = self.post_process(batch=batch, batch_task_label=batch_task_label, mode='test')
+        if self._task_label:
+            return [batch, batch_task_label]
+        else:
+            return batch
