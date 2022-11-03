@@ -2,6 +2,9 @@
 
 #### V0.1.10_dev
 - 增加 ml.ContinualDataset，提供连续学习数据环境
+- 增加 ml.time2vec 方法，处理 index-like 特征
+- 增加 alz.mmd 方法，计算数据集间的 MMD 距离
+- 重写 ml.TFModel.eval 方法，现在该方法接受 Dataset 对象做输入
 
 #### V0.1.9
 - 增加 ml.pearson_corr 方法

@@ -1,5 +1,62 @@
 import numpy as np
 
+def rbf_kernel(x1,x2,sigma=1.0):
+    '''Compute rbf kernel between two points.
+    k(x1,x2)=exp(-|x1-x2|_2/2sigma^2)
+
+    Parameters
+    ----------
+        x1: ndarray
+            shape (...,D), batch of D-Dimension vectors.
+        x2: ndarray
+            shape (...,D), batch of D-Dimension vectors.
+        sigma: float
+            default 1.0
+    Return
+    ------
+        ndarray
+            shape (...). 
+    '''
+    return np.exp(-np.sqrt(np.sum((x1-x2)**2, -1))/(2*sigma**2))
+
+def mmd(P,Q,k=None,sample_size=None):
+    '''Compute MMD (Maximum Mean Discrepancy) between two sample sets.
+    mmd^2(P,Q) = 1/m^2 sum_{i,j} k(p_i,p_j) + 1/n^2 sum_{i,j} k(q_i,q_j) - 2/mn sum_{i,j} k(p_i,q_j)
+
+    Parameters
+    ----------
+        P: ndarray
+            shape (...,D), batch of D-Dimension vectors.
+        Q: ndarray
+            shape (...,D), batch of D-Dimension vectors.
+        k: callable
+            return kernel result, called by k(x,y), default rbf kernel
+        sample_size: int
+            use a random subset to compute mmd, default use all avaliable. The memory consumption of mmd computation is square to sample_size
+    Return
+    ------
+        float
+            mmd value. 
+    '''
+    if k is None:
+        k = lambda x,y: rbf_kernel(x, y, 1.0)
+    
+    D = P.shape[-1]
+    p = np.reshape(P, [-1, D])
+    q = np.reshape(Q, [-1, D])
+    if sample_size is not None:
+        perm = np.arange(p.shape[0])
+        np.random.shuffle(perm)
+        p = p[perm[:sample_size]]
+        perm = np.arange(q.shape[0])
+        np.random.shuffle(perm)
+        q = q[perm[:sample_size]]
+
+    term1 = np.mean(k(p[:, None], p))
+    term2 = np.mean(k(q[:, None], q)) 
+    term3 = np.mean(k(p[:, None], q))*2
+    return np.sqrt(term1+term2-term3)
+
 def haversine(loc1, loc2):
     '''Compute the harversine distance between two points.
     Parameters

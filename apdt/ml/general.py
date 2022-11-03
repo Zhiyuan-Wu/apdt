@@ -468,13 +468,52 @@ class TFModel():
         _re = _unzip_list(_re)
         return _re[1:]
 
-    def eval(self, data):
-        if type(self.input) is list:
-            feed_dict = {self.input[i]: data[i] for i in range(len(self.input))}
-            feed_dict.update({self.learning_rate: 0.0, self.training: False, self.training_process: 0.0})
+    def eval(self, target, dataset, mode='test', batch_size=1):
+        '''Evaluate target tensor on the given dataset.
+        
+        Parameters
+        ----------
+            target, TF tensor
+                the tensorflow tensor to be evaluated.
+            dataset, dict
+                the dataset to be evaluated
+            mode, str, default 'test'
+                on which subset, ['train','validation','test']
+        
+        Returns
+        ----------
+            ndarray
+        '''
+        
+        if mode in ['tr', 'train', 'training']:
+            batch_num = dataset.tr_batch_num
+            get_batch = dataset.tr_get_batch
+        elif mode in ['val', 'validate', 'validation']:
+            batch_num = dataset.val_batch_num
+            get_batch = dataset.val_get_batch
+        elif mode in ['te', 'test', 'testing']:
+            batch_num = dataset.te_batch_num
+            get_batch = dataset.te_get_batch
         else:
-            feed_dict = {self.learning_rate: 0.0, self.training: False, self.training_process: 0.0, self.input: data}
-        result = self.sess.run(self.pred, feed_dict)
+            raise Exception('Unsupport mode.')
+        
+        # This is to remind output data may not be well-paired to dataset
+        # if batch_num%batch_size != 0:
+        #     print('WARNING: Total data number', batch_num, 'can not be divided by batchsize', batch_size)
+        #     print('WARNING: Some test data may be lost.')
+
+        result_list = []
+        for _ in range(batch_num//batch_size):
+            batch = get_batch(batch_size)
+            if type(self.input) is list:
+                feed_dict = {self.input[i]: batch[i] for i in range(len(self.input))}
+                feed_dict.update({self.learning_rate: 0.0, self.training: False, self.training_process: 0.0})
+            else:
+                feed_dict = {self.learning_rate: 0.0, self.training: False, self.training_process: 0.0, self.input: batch}
+            _r = self.sess.run(target, feed_dict)
+            result_list.append(_r)
+        
+        result = np.stack(result_list, 0)
         return result
 
     def _zip_run(self, target, feed_dict, mode='cartesian', _r=0):
