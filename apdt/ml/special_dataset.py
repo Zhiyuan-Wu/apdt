@@ -219,12 +219,16 @@ class _ContinualDataset_child():
         self.tr_batch_counter = self.tr_batch_counter + batch_size
         batch = self.tr[target_index]
         batch_task_label = self.tr_task_label[target_index]
-        if self.post_process is not None:
-            batch, batch_task_label = self.post_process(batch=batch, batch_task_label=batch_task_label, mode='train')
         if self._task_label:
-            return [batch, batch_task_label]
+            if self.post_process is not None:
+                return self.post_process(batch=batch, batch_task_label=batch_task_label, mode='train')
+            else:
+                return [batch, batch_task_label]
         else:
-            return batch
+            if self.post_process is not None:
+                return self.post_process(batch=batch, mode='train')
+            else:
+                return batch
 
     def val_get_batch(self, batch_size=1):
         if batch_size > self.val_batch_num:
@@ -235,12 +239,16 @@ class _ContinualDataset_child():
         self.val_batch_counter = self.val_batch_counter + batch_size
         batch = self.val[target_index]
         batch_task_label = self.val_task_label[target_index]
-        if self.post_process is not None:
-            batch, batch_task_label = self.post_process(batch=batch, batch_task_label=batch_task_label, mode='validate')
         if self._task_label:
-            return [batch, batch_task_label]
+            if self.post_process is not None:
+                return self.post_process(batch=batch, batch_task_label=batch_task_label, mode='validate')
+            else:
+                return [batch, batch_task_label]
         else:
-            return batch
+            if self.post_process is not None:
+                return self.post_process(batch=batch, mode='train')
+            else:
+                return batch
     
     def te_get_batch(self, batch_size=1):
         if batch_size > self.te_batch_num:
@@ -251,9 +259,13 @@ class _ContinualDataset_child():
         self.te_batch_counter = self.te_batch_counter + batch_size
         batch = self.te[target_index]
         batch_task_label = self.te_task_label[target_index]
-        if self.post_process is not None:
-            batch, batch_task_label = self.post_process(batch=batch, batch_task_label=batch_task_label, mode='test')
         if self._task_label:
-            return [batch, batch_task_label]
+            if self.post_process is not None:
+                return self.post_process(batch=batch, batch_task_label=batch_task_label, mode='test')
+            else:
+                return [batch, batch_task_label]
         else:
-            return batch
+            if self.post_process is not None:
+                return self.post_process(batch=batch, mode='train')
+            else:
+                return batch

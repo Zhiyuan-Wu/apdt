@@ -57,6 +57,41 @@ def mmd(P,Q,k=None,sample_size=None):
     term3 = np.mean(k(p[:, None], q))*2
     return np.sqrt(term1+term2-term3)
 
+def gauss_kl_distance(P,Q,epsilon=1e-3):
+    '''Compute KL divengence between two gaussians fitted from given sample set.
+
+    Parameters
+    ----------
+        P: ndarray
+            shape (...,D), batch of D-Dimension vectors.
+        Q: ndarray
+            shape (...,D), batch of D-Dimension vectors.
+        epsilon: float
+            a small numper to avoid singular covariance
+    
+    Return
+    ------
+        float
+            KL divengence of the fitted gaussian. 
+    '''
+    D = P.shape[-1]
+    p = np.reshape(P, [-1, D])
+    q = np.reshape(Q, [-1, D])
+
+    mu_p = np.mean(p, 0)
+    sigma_p = (p-mu_p).T @ (p-mu_p) / p.shape[0] + epsilon
+    mu_q = np.mean(q, 0)
+    sigma_q = (q-mu_q).T @ (q-mu_q) / q.shape[0] + epsilon
+
+    # KL[p1||p2] = 1/2 * {log(det(sigma2)/det(sigma1)) - d + tr(sigma2^(-1)sigma1) + (mu2-mu1)'sigma2^(-1)(mu2-mu1)}
+    term1 = np.linalg.slogdet(sigma_q)[1] - np.linalg.slogdet(sigma_p)[1]
+    term2 = D
+    term3 = np.trace(np.linalg.inv(sigma_q) @ sigma_p)
+    term4 = (mu_q-mu_p) @ np.linalg.inv(sigma_q) @ (mu_q-mu_p)
+    result = 0.5 * (term1 - term2 + term3 + term4)
+
+    return result
+
 def haversine(loc1, loc2):
     '''Compute the harversine distance between two points.
     Parameters

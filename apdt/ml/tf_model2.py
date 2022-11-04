@@ -115,7 +115,7 @@ def time2vec_weight(**kwarg):
     w = {}
     with tf.variable_scope(kwarg['name']):
         w['weight'] = tf.get_variable('weight',[kwarg['input_dim'], kwarg['output_dim']],initializer=_init, trainable=kwarg['trainable'])
-        w['bias'] = tf.get_variable('weight',[kwarg['output_dim']],initializer=_init, trainable=kwarg['trainable'])
+        w['bias'] = tf.get_variable('bias',[kwarg['output_dim']],initializer=_init, trainable=kwarg['trainable'])
 
     return w
 
