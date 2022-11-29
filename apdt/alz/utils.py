@@ -150,3 +150,46 @@ def IDW(sloc, svalue, tloc, scale=0.05, kernel='exp'):
     weight = weight/np.sum(weight,0)
     result = np.matmul(svalue.T, weight).T
     return result
+
+def projsplx(x, epsilon=0.0, s=1.0):
+    '''Project x, a n-dim real vector, onto the n-dim simplx:
+    min ||x-y||_2
+    s.t.  y_i>=epsilon
+          Sigma y_i = s
+
+    Ref: [1] Chen, Yunmei, and Xiaojing Ye. "Projection onto a simplex." arXiv preprint arXiv:1101.6081 (2011).
+         [2] https://math.stackexchange.com/questions/2402504/orthogonal-projection-onto-the-unit-simplex
+
+    Parameters
+    ----------
+        x, ndarray
+            need of shape (n,)
+        epsilon, float
+            boundary value of y, default 0.0
+        s, float
+            required sum of y, default 1.0
+
+    Return
+    ------
+        ndarray
+    '''
+    n = x.shape[0]
+    x_sorted = np.sort(x)
+    assert s >= epsilon * n
+
+    i = n-1
+    while 1:
+        t_i = (np.sum(x_sorted[i:]) + i*epsilon - s) / (n - i)
+        if t_i >= x_sorted[i - 1]:
+            t_hat = t_i
+            break
+        i = i - 1
+        if i >= 1:
+            continue
+        else:
+            t_hat = (np.sum(x) - s) / (n)
+            break
+    y = x - t_hat
+    y[y<epsilon] = epsilon
+
+    return y
