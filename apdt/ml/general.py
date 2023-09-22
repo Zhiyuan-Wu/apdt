@@ -473,7 +473,7 @@ class TFModel():
         
         Parameters
         ----------
-            target, TF tensor
+            target, TF tensor or a list of such
                 the tensorflow tensor to be evaluated.
             dataset, dict
                 the dataset to be evaluated
@@ -513,7 +513,10 @@ class TFModel():
             _r = self.sess.run(target, feed_dict)
             result_list.append(_r)
         
-        result = np.stack(result_list, 0)
+        if type(target) is list:
+            result = [np.stack(x, 0) for x in zip(*result_list)]
+        else:
+            result = np.stack(result_list, 0)
         return result
 
     def _zip_run(self, target, feed_dict, mode='cartesian', _r=0):
